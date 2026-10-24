@@ -2,32 +2,45 @@
 
 import React from "react";
 import { useApp } from "@/context/AppContext";
-import { UserPlus, Phone, Key, ShieldCheck, FileText, User } from "lucide-react";
+import { UserPlus, Phone, Key, ShieldCheck, FileText, User, Loader2 } from "lucide-react";
 
 export default function SalesmenView({ onOpenAddSalesman, onSelectReport }) {
-  const { salesmen, setCurrentUser } = useApp();
+  const { salesmen, isSalesmenLoading, setCurrentUser } = useApp();
 
   return (
     <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-extrabold text-slate-900">
-            Salesmen & Field Drivers Directory
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-extrabold text-slate-900">
+              Salesmen & Field Drivers Directory
+            </h2>
+            {isSalesmenLoading && (
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                <span>Loading salesmen...</span>
+              </span>
+            )}
+          </div>
           <p className="text-xs text-slate-500">
             Manage route assignments, login credentials, and daily delivery targets
           </p>
         </div>
         <button
           onClick={onOpenAddSalesman}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-400 text-slate-950 text-xs sm:text-sm font-bold shadow-xs hover:bg-amber-500 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-400 text-slate-950 text-xs sm:text-sm font-bold shadow-xs hover:bg-amber-500 transition-colors cursor-pointer"
         >
           <UserPlus className="w-4 h-4" />
           <span>+ Create New Salesman</span>
         </button>
       </div>
 
-      {salesmen.length === 0 ? (
+      {isSalesmenLoading && salesmen.length === 0 ? (
+        <div className="p-12 bg-slate-50 rounded-2xl border border-dashed border-slate-300 text-center flex flex-col items-center justify-center gap-2">
+          <Loader2 className="w-7 h-7 animate-spin text-amber-500" />
+          <p className="font-semibold text-sm text-slate-700">Loading salesmen directory from database...</p>
+        </div>
+      ) : salesmen.length === 0 ? (
         <div className="p-8 bg-slate-50 rounded-2xl border border-dashed border-slate-300 text-center">
           <p className="text-sm font-bold text-slate-700">No salesmen created yet.</p>
           <p className="text-xs text-slate-500 mt-1">

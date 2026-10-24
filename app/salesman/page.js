@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/components/common/Header";
 import NewSaleEntry from "@/components/salesman/NewSaleEntry";
 import SalesmanHistory from "@/components/salesman/SalesmanHistory";
@@ -16,52 +17,80 @@ import {
   TrendingUp,
   Package,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  LogOut,
+  Loader2
 } from "lucide-react";
 
 export default function SalesmanPage() {
-  const { salesmen, currentUser, setCurrentUser, salesOrders, fetchOrders, EGGS_PER_PETI } = useApp();
+  const router = useRouter();
+  const { currentUser, logout, salesOrders, fetchOrders, isOrdersLoading, EGGS_PER_PETI } = useApp();
 
   // Tab: 'billing' | 'history' | 'stats'
   const [activeTab, setActiveTab] = useState("billing");
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
 
-  // Active salesman selection
-  const [selectedId, setSelectedId] = useState(currentUser?.id || salesmen[0]?.id || "SM-1");
-  const activeSalesman = salesmen.find((s) => s.id === selectedId) || salesmen[0] || {
-    id: "SM-1",
-    name: currentUser?.name || "Salesman",
-    code: "SM",
-    route: currentUser?.route || "Market Route",
-    vehicle: currentUser?.vehicle || "Van",
-    todaySoldPetis: 0,
-    dailyTargetPetis: 50,
-  };
-
-  // Fetch orders for this salesman on-demand based on active tab
+  // Authentication Lock: Ensure only logged in salesman can view this page
   useEffect(() => {
-    if (activeSalesman?.id) {
-      const filter = activeTab === "history" ? "all" : "today";
-      fetchOrders({ salesmanId: activeSalesman.id, dateFilter: filter });
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("andagodam_user");
+      if (!saved) {
+        router.replace("/login");
+        return;
+      }
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.role !== "salesman") {
+          router.replace("/login");
+          return;
+        }
+      } catch (e) {
+        router.replace("/login");
+        return;
+      }
+      setIsAuthChecking(false);
     }
-  }, [activeSalesman?.id, activeTab, fetchOrders]);
+  }, [router]);
+
+  // Strictly bind to the authenticated salesman account
+  const activeSalesman = currentUser?.role === "salesman" ? currentUser : null;
+
+  // Fetch orders strictly for THIS authenticated salesman on-demand
+  useEffect(() => {
+    if (activeSalesman?.id || activeSalesman?._id) {
+      const sId = activeSalesman.id || activeSalesman._id;
+      const filter = activeTab === "history" ? "all" : "today";
+      fetchOrders({ salesmanId: sId, dateFilter: filter });
+    }
+  }, [activeSalesman?.id, activeSalesman?._id, activeTab, fetchOrders]);
 
   const myOrders = salesOrders.filter(
-    (o) => o.salesmanId === activeSalesman?.id || o.salesmanName === activeSalesman?.name
+    (o) =>
+      o.salesmanId === (activeSalesman?.id || activeSalesman?._id) ||
+      o.salesmanName === activeSalesman?.name
   );
 
   // Mobile frame simulator toggle for desktop testing
   const [simulatorMode, setSimulatorMode] = useState(false);
 
-  const handleSalesmanChange = (id) => {
-    setSelectedId(id);
-    const target = salesmen.find((s) => s.id === id);
-    if (target) {
-      setCurrentUser({
-        role: "salesman",
-        ...target,
-      });
+  const handleLogout = () => {
+    if (confirm(`Are you sure you want to log out of ${activeSalesman?.name || "your account"}?`)) {
+      logout();
+      router.replace("/login");
     }
   };
+
+  if (isAuthChecking || !activeSalesman) {
+    return (
+      <div className="min-h-screen bg-[#F6F7FA] flex flex-col justify-center items-center p-4 font-sans">
+        <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 text-center max-w-sm w-full space-y-3">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-teal-800" />
+          <h3 className="font-extrabold text-sm text-slate-800">Verifying Salesman Session...</h3>
+          <p className="text-xs text-slate-500">Only authorized salesmen can access this portal.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F6F7FA] text-slate-800 flex flex-col font-sans">
@@ -79,7 +108,7 @@ export default function SalesmanPage() {
         </span>
         <button
           onClick={() => setSimulatorMode(!simulatorMode)}
-          className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold border transition-colors ${
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
             simulatorMode
               ? "bg-amber-100 text-amber-900 border-amber-300"
               : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
@@ -119,19 +148,18 @@ export default function SalesmanPage() {
                 </p>
               </div>
 
-              {/* Quick Switch Salesman Account Dropdown */}
-              <div className="relative">
-                <select
-                  value={selectedId}
-                  onChange={(e) => handleSalesmanChange(e.target.value)}
-                  className="bg-teal-900/80 text-white text-[11px] font-semibold py-1 px-2 rounded-xl border border-teal-700/60 focus:outline-none"
+              {/* Verified Salesman Badge & Logout (NO DROPDOWN SWITCHER - STRICTLY SECURED) */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg bg-teal-900/90 text-amber-300 border border-teal-700/60 shadow-xs">
+                  {activeSalesman.code ? `Code: ${activeSalesman.code}` : `@${activeSalesman.username}`}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="p-1.5 rounded-lg bg-teal-900/80 hover:bg-red-800 text-teal-200 hover:text-white transition-colors cursor-pointer"
+                  title="Logout Account"
                 >
-                  {salesmen.map((s) => (
-                    <option key={s.id} value={s.id} className="text-slate-900">
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
 
@@ -142,7 +170,7 @@ export default function SalesmanPage() {
                   Today's Deliveries
                 </span>
                 <strong className="text-white text-sm">
-                  {activeSalesman.todaySoldPetis || 0} / {activeSalesman.dailyTargetPetis || 50} Petis
+                  {myOrders.reduce((sum, o) => sum + (Number(o.petis) || 0), 0)} / {activeSalesman.dailyTargetPetis || 50} Petis
                 </strong>
               </div>
               <div className="h-7 w-[1px] bg-white/20" />
@@ -151,7 +179,7 @@ export default function SalesmanPage() {
                   Total Eggs Sold
                 </span>
                 <strong className="text-amber-300 text-sm">
-                  {Number(activeSalesman.todaySoldEggs || 0).toLocaleString()}
+                  {myOrders.reduce((sum, o) => sum + (Number(o.netEggs) || Number(o.totalEggs) || 0), 0).toLocaleString()}
                 </strong>
               </div>
               <div className="h-7 w-[1px] bg-white/20" />
@@ -160,7 +188,7 @@ export default function SalesmanPage() {
                   Cash Collected
                 </span>
                 <strong className="text-emerald-300 text-sm">
-                  Rs. {Number(activeSalesman.cashCollected || 0).toLocaleString()}
+                  Rs. {myOrders.reduce((sum, o) => sum + (Number(o.paidAmount) || 0), 0).toLocaleString()}
                 </strong>
               </div>
             </div>

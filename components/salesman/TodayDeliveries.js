@@ -2,13 +2,13 @@
 
 import React from "react";
 import { useApp } from "@/context/AppContext";
-import { Receipt, Share2, CheckCircle2 } from "lucide-react";
+import { Receipt, Share2, CheckCircle2, Loader2 } from "lucide-react";
 
 export default function TodayDeliveries({ activeSalesman }) {
-  const { salesOrders, openReceipt, EGGS_PER_PETI } = useApp();
+  const { salesOrders, openReceipt, isOrdersLoading, EGGS_PER_PETI } = useApp();
 
   const myOrders = salesOrders.filter(
-    (o) => o.salesmanId === (activeSalesman?.id || "SM-1")
+    (o) => o.salesmanId === activeSalesman?.id || o.salesmanName === activeSalesman?.name
   );
 
   const getWhatsAppLink = (receipt) => {
@@ -42,15 +42,28 @@ export default function TodayDeliveries({ activeSalesman }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-xs font-bold text-slate-700 uppercase">
-          Today's Deliveries ({myOrders.length})
-        </h4>
+        <div className="flex items-center gap-2">
+          <h4 className="text-xs font-bold text-slate-700 uppercase">
+            Today's Deliveries ({myOrders.length})
+          </h4>
+          {isOrdersLoading && (
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-full">
+              <Loader2 className="w-3 h-3 animate-spin text-teal-700" />
+              <span>Updating...</span>
+            </span>
+          )}
+        </div>
         <span className="text-[11px] font-semibold text-teal-700">
           {myOrders.reduce((a, b) => a + Number(b.petis), 0)} Petis Delivered
         </span>
       </div>
 
-      {myOrders.length === 0 ? (
+      {isOrdersLoading && myOrders.length === 0 ? (
+        <div className="p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center flex flex-col items-center justify-center gap-2">
+          <Loader2 className="w-6 h-6 animate-spin text-teal-700" />
+          <p className="text-xs font-bold text-slate-700">Loading today's deliveries from database...</p>
+        </div>
+      ) : myOrders.length === 0 ? (
         <div className="p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center">
           <p className="text-xs font-bold text-slate-600">No deliveries recorded yet today</p>
           <p className="text-[11px] text-slate-400 mt-0.5">

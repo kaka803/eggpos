@@ -8,6 +8,7 @@ import OrderDetailsModal from "@/components/admin/OrderDetailsModal";
 import StockInwardView from "@/components/admin/StockInwardView";
 import SalesmenView from "@/components/admin/SalesmenView";
 import ReportsView from "@/components/admin/ReportsView";
+import SettingsView from "@/components/admin/SettingsView";
 import StockModal from "@/components/admin/StockModal";
 import NewSalesmanModal from "@/components/admin/NewSalesmanModal";
 import ReceiptModal from "@/components/common/ReceiptModal";
@@ -25,7 +26,8 @@ import {
   TrendingUp,
   Receipt,
   User,
-  Loader2
+  Loader2,
+  Settings
 } from "lucide-react";
 
 export default function AdminPage() {
@@ -110,7 +112,8 @@ export default function AdminPage() {
     { id: "orders", label: "Orders Directory", shortLabel: "Orders", icon: ShoppingCart },
     { id: "stock", label: "Stock Inward", shortLabel: "Stock", icon: Layers },
     { id: "salesmen", label: "Salesmen Management", shortLabel: "Salesmen", icon: Users },
-    { id: "reports", label: "Sales Reports & Khata", shortLabel: "Reports", icon: FileText }
+    { id: "reports", label: "Sales Reports & Khata", shortLabel: "Reports", icon: FileText },
+    { id: "settings", label: "Settings", shortLabel: "Settings", icon: Settings }
   ];
 
   return (
@@ -407,6 +410,11 @@ export default function AdminPage() {
             onSalesmanChange={setSelectedReportSalesmanId}
           />
         )}
+
+        {/* TAB 6: SETTINGS */}
+        {activeTab === "settings" && (
+          <SettingsView />
+        )}
       </main>
 
       {/* Order Details Modal when clicking any order */}
@@ -437,8 +445,8 @@ export default function AdminPage() {
       <ReceiptModal />
 
       {/* Mobile Bottom Navigation Dock (Fixed Blurry Glass Effect) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-xl border-t border-slate-200/90 shadow-[0_-8px_30px_rgb(0,0,0,0.08)] px-2 py-1.5 pb-[max(env(safe-area-inset-bottom),0.6rem)]">
-        <div className="grid grid-cols-5 gap-1 items-center max-w-md mx-auto">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-xl border-t border-slate-200/90 shadow-[0_-8px_30px_rgb(0,0,0,0.08)] px-1 py-1.5 pb-[max(env(safe-area-inset-bottom),0.6rem)]">
+        <div className="grid grid-cols-6 gap-0.5 items-center max-w-md mx-auto">
           {adminTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -446,23 +454,23 @@ export default function AdminPage() {
               <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
-                className={`flex flex-col items-center justify-center py-1 px-1 rounded-2xl transition-all relative cursor-pointer ${
+                className={`flex flex-col items-center justify-center py-1 px-0.5 rounded-2xl transition-all relative cursor-pointer ${
                   isActive
                     ? "text-slate-950 font-black"
                     : "text-slate-500 hover:text-slate-800 font-medium"
                 }`}
               >
                 <div
-                  className={`w-9 h-7 flex items-center justify-center rounded-xl transition-all ${
+                  className={`w-8 h-6.5 flex items-center justify-center rounded-xl transition-all ${
                     isActive
                       ? "bg-amber-400 text-slate-950 shadow-xs scale-105"
                       : "bg-transparent text-slate-500"
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3.5 h-3.5" />
                 </div>
                 <span
-                  className={`text-[10px] mt-0.5 tracking-tight truncate max-w-full leading-tight ${
+                  className={`text-[9px] mt-0.5 tracking-tight truncate max-w-full leading-tight ${
                     isActive ? "font-extrabold text-slate-950" : "font-semibold text-slate-500"
                   }`}
                 >

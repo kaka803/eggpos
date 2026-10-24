@@ -13,13 +13,15 @@ import {
   Phone,
   Sparkles,
   HelpCircle,
-  FileCheck
+  FileCheck,
+  Loader2
 } from "lucide-react";
 
 export default function NewSaleEntry({ activeSalesman }) {
   const { addSaleOrder, openReceipt, salesOrders, uploadShopImage, EGGS_PER_PETI } = useApp();
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentPreset, setPaymentPreset] = useState("full"); // 'full' | 'credit' | 'custom'
 
   const [form, setForm] = useState({
@@ -29,12 +31,12 @@ export default function NewSaleEntry({ activeSalesman }) {
     phone: "",
     area: "",
     photoUrl: null,
-    petis: 1,
-    looseEggs: 0,
-    brokenEggs: 0, // Toote hue anday
-    ratePerPeti: 7300,
+    petis: "1",       // stored as string so backspace/clear works
+    looseEggs: "",    // empty string = 0 for math
+    brokenEggs: "",   // empty string = 0 for math
+    ratePerPeti: "7300",
     paymentMode: "Cash",
-    paidAmount: 7300,
+    paidAmount: "7300",
   });
 
   // Egg and Price Math with Broken Eggs calculation
@@ -54,7 +56,7 @@ export default function NewSaleEntry({ activeSalesman }) {
   const paid = paymentPreset === "full" ? totalBill : paymentPreset === "credit" ? 0 : Number(form.paidAmount) || 0;
   const remainingBalance = Math.max(0, totalBill - paid);
 
-  // Recalculate bill whenever petis or rate changes
+  // Recalculate bill when +/- buttons are clicked (not direct typing)
   const updatePetis = (newPetis) => {
     const validPetis = Math.max(0, newPetis);
     const newGross = validPetis * EGGS_PER_PETI + looseCount;
@@ -65,17 +67,17 @@ export default function NewSaleEntry({ activeSalesman }) {
 
     setForm((prev) => ({
       ...prev,
-      petis: validPetis,
-      paidAmount: paymentPreset === "full" ? newTotal : paymentPreset === "credit" ? 0 : prev.paidAmount,
+      petis: String(validPetis),
+      paidAmount: paymentPreset === "full" ? String(newTotal) : paymentPreset === "credit" ? "0" : prev.paidAmount,
     }));
   };
 
   const handlePresetSelect = (preset) => {
     setPaymentPreset(preset);
     if (preset === "full") {
-      setForm((prev) => ({ ...prev, paidAmount: totalBill, paymentMode: "Cash" }));
+      setForm((prev) => ({ ...prev, paidAmount: String(totalBill), paymentMode: "Cash" }));
     } else if (preset === "credit") {
-      setForm((prev) => ({ ...prev, paidAmount: 0, paymentMode: "Credit / Khata" }));
+      setForm((prev) => ({ ...prev, paidAmount: "0", paymentMode: "Credit / Khata" }));
     }
   };
 
@@ -103,7 +105,7 @@ export default function NewSaleEntry({ activeSalesman }) {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.shopName && !form.photoUrl) {
       alert("Please enter Shop Name OR snap a shop signboard photo!");
@@ -115,59 +117,67 @@ export default function NewSaleEntry({ activeSalesman }) {
       return;
     }
 
-    const orderId = `INV-${9000 + salesOrders.length + 1}`;
-    const code = (form.shopName ? form.shopName.slice(0, 2) : "SP").toUpperCase();
-    const status = remainingBalance <= 0 ? "Full Paid" : paid === 0 ? "Credit / Unpaid" : "Partial";
+    setIsSubmitting(true);
+    try {
+      const orderId = `INV-${9000 + salesOrders.length + 1}`;
+      const code = (form.shopName ? form.shopName.slice(0, 2) : "SP").toUpperCase();
+      const status = remainingBalance <= 0 ? "Full Paid" : paid === 0 ? "Credit / Unpaid" : "Partial";
 
-    const newOrder = {
-      id: orderId,
-      code: code,
-      salesmanId: activeSalesman?.id || "SM-1",
-      salesmanName: activeSalesman?.name || "Muhammad Usman",
-      shopName: form.shopName || "Shop Board Snap Entry",
-      shopkeeperName: form.shopkeeperName || "Shopkeeper",
-      phone: form.phone || "03001234567",
-      area: form.area || activeSalesman?.route || "Market Route",
-      hasPhoto: !!form.photoUrl,
-      photoUrl: form.photoUrl,
-      petis: petisCount,
-      looseEggs: looseCount,
-      grossEggs: grossEggs,
-      brokenEggs: brokenCount, // Toote hue anday
-      netEggs: netEggs,
-      totalEggs: netEggs, // Billable net eggs
-      ratePerPeti: petiRate,
-      ratePerEgg: singleEggRate.toFixed(2),
-      brokenDeduction: brokenDeduction,
-      totalAmount: totalBill,
-      paidAmount: paid,
-      remainingBalance: remainingBalance,
-      paymentStatus: status,
-      paymentMode: form.paymentMode,
-      date: new Date().toISOString().split("T")[0],
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      orderStatus: "Completed",
-    };
+      const newOrder = {
+        id: orderId,
+        code: code,
+        salesmanId: activeSalesman?.id || "SM-1",
+        salesmanName: activeSalesman?.name || "Muhammad Usman",
+        shopName: form.shopName || "Shop Board Snap Entry",
+        shopkeeperName: form.shopkeeperName || "Shopkeeper",
+        phone: form.phone || "03001234567",
+        area: form.area || activeSalesman?.route || "Market Route",
+        hasPhoto: !!form.photoUrl,
+        photoUrl: form.photoUrl,
+        petis: petisCount,
+        looseEggs: looseCount,
+        grossEggs: grossEggs,
+        brokenEggs: brokenCount, // Toote hue anday
+        netEggs: netEggs,
+        totalEggs: netEggs, // Billable net eggs
+        ratePerPeti: petiRate,
+        ratePerEgg: singleEggRate.toFixed(2),
+        brokenDeduction: brokenDeduction,
+        totalAmount: totalBill,
+        paidAmount: paid,
+        remainingBalance: remainingBalance,
+        paymentStatus: status,
+        paymentMode: form.paymentMode,
+        date: new Date().toISOString().split("T")[0],
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        orderStatus: "Completed",
+      };
 
-    addSaleOrder(newOrder);
-    openReceipt(newOrder);
+      const saved = await addSaleOrder(newOrder);
+      openReceipt(saved || newOrder);
 
-    // Reset Form for next sale
-    setForm({
-      entryMode: "manual",
-      shopName: "",
-      shopkeeperName: "",
-      phone: "",
-      area: "",
-      photoUrl: null,
-      petis: 1,
-      looseEggs: 0,
-      brokenEggs: 0,
-      ratePerPeti: 7300,
-      paymentMode: "Cash",
-      paidAmount: 7300,
-    });
-    setPaymentPreset("full");
+      // Reset Form for next sale
+      setForm({
+        entryMode: "manual",
+        shopName: "",
+        shopkeeperName: "",
+        phone: "",
+        area: "",
+        photoUrl: null,
+        petis: "1",
+        looseEggs: "",
+        brokenEggs: "",
+        ratePerPeti: "7300",
+        paymentMode: "Cash",
+        paidAmount: "7300",
+      });
+      setPaymentPreset("full");
+    } catch (err) {
+      console.error("Order submit error:", err);
+      alert("Error saving sale order. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -383,7 +393,28 @@ export default function NewSaleEntry({ activeSalesman }) {
                 type="number"
                 min="0"
                 value={form.petis}
-                onChange={(e) => updatePetis(Number(e.target.value))}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  // Allow empty string while typing; recalc bill on valid number
+                  setForm((prev) => ({
+                    ...prev,
+                    petis: raw,
+                    ...(raw !== "" && {
+                      paidAmount:
+                        paymentPreset === "full"
+                          ? String(Math.max(0, Number(raw) * petiRate + looseAmount - Math.round(Math.min(Number(raw) * EGGS_PER_PETI + looseCount, Number(prev.brokenEggs) || 0) * singleEggRate)))
+                          : paymentPreset === "credit"
+                          ? "0"
+                          : prev.paidAmount,
+                    }),
+                  }));
+                }}
+                onBlur={(e) => {
+                  // On blur, ensure valid non-negative number
+                  if (e.target.value === "" || Number(e.target.value) < 0) {
+                    setForm((prev) => ({ ...prev, petis: "0" }));
+                  }
+                }}
                 className="w-full text-center font-black text-2xl bg-white border border-amber-400 rounded-xl h-12 text-slate-950 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-inner"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
@@ -429,8 +460,9 @@ export default function NewSaleEntry({ activeSalesman }) {
               type="number"
               min="0"
               placeholder="0"
-              value={form.looseEggs || ""}
-              onChange={(e) => setForm({ ...form, looseEggs: Number(e.target.value) })}
+              value={form.looseEggs}
+              onChange={(e) => setForm({ ...form, looseEggs: e.target.value })}
+              onBlur={(e) => { if (e.target.value === "") setForm((p) => ({ ...p, looseEggs: "" })); }}
               className="w-full text-xs font-semibold bg-white border border-slate-300 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
           </div>
@@ -442,8 +474,23 @@ export default function NewSaleEntry({ activeSalesman }) {
             <input
               type="number"
               required
+              min="0"
+              placeholder="0"
               value={form.ratePerPeti}
-              onChange={(e) => setForm({ ...form, ratePerPeti: Number(e.target.value) })}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setForm((prev) => ({
+                  ...prev,
+                  ratePerPeti: raw,
+                  paidAmount:
+                    paymentPreset === "full"
+                      ? String(Math.max(0, petisCount * (Number(raw) || 0) + Math.round(looseCount * ((Number(raw) || 0) / EGGS_PER_PETI)) - Math.round(brokenCount * ((Number(raw) || 0) / EGGS_PER_PETI))))
+                      : paymentPreset === "credit"
+                      ? "0"
+                      : prev.paidAmount,
+                }));
+              }}
+              onBlur={(e) => { if (e.target.value === "") setForm((p) => ({ ...p, ratePerPeti: "0" })); }}
               className="w-full text-xs font-extrabold text-slate-900 bg-white border border-slate-300 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
             <span className="text-[10px] text-slate-500 block mt-0.5">
@@ -469,10 +516,9 @@ export default function NewSaleEntry({ activeSalesman }) {
               type="number"
               min="0"
               placeholder="0 (e.g. 5, 10 toote anday)"
-              value={form.brokenEggs || ""}
-              onChange={(e) =>
-                setForm({ ...form, brokenEggs: Math.max(0, Number(e.target.value)) })
-              }
+              value={form.brokenEggs}
+              onChange={(e) => setForm({ ...form, brokenEggs: e.target.value })}
+              onBlur={(e) => { if (e.target.value === "") setForm((p) => ({ ...p, brokenEggs: "" })); }}
               className="w-full text-xs font-black text-red-700 bg-white border border-red-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-400"
             />
             {brokenCount > 0 && (
@@ -573,8 +619,10 @@ export default function NewSaleEntry({ activeSalesman }) {
               type="number"
               min="0"
               max={totalBill}
+              placeholder="0"
               value={form.paidAmount}
-              onChange={(e) => setForm({ ...form, paidAmount: Number(e.target.value) })}
+              onChange={(e) => setForm({ ...form, paidAmount: e.target.value })}
+              onBlur={(e) => { if (e.target.value === "") setForm((p) => ({ ...p, paidAmount: "0" })); }}
               className="w-full text-sm font-black text-slate-900 bg-white border border-amber-400 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
@@ -614,10 +662,20 @@ export default function NewSaleEntry({ activeSalesman }) {
           ========================================================================= */}
       <button
         type="submit"
-        className="w-full py-4 rounded-2xl bg-amber-400 hover:bg-amber-500 active:scale-[0.99] text-slate-950 font-black text-base shadow-lg shadow-amber-400/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+        disabled={isSubmitting || isUploading}
+        className="w-full py-4 rounded-2xl bg-amber-400 hover:bg-amber-500 active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed text-slate-950 font-black text-base shadow-lg shadow-amber-400/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
       >
-        <Receipt className="w-5 h-5 text-slate-950" />
-        <span>Save Sale & View Thermal Receipt</span>
+        {isSubmitting ? (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin text-slate-950" />
+            <span>Saving Sale & Generating Receipt...</span>
+          </>
+        ) : (
+          <>
+            <Receipt className="w-5 h-5 text-slate-950" />
+            <span>Save Sale & View Thermal Receipt</span>
+          </>
+        )}
       </button>
     </form>
   );

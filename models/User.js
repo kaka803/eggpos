@@ -49,6 +49,31 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // Godam / Warehouse details (stored on admin user record)
+    godamName: {
+      type: String,
+      trim: true,
+      default: "AL-BARKAT EGG WHOLESALE WAREHOUSE",
+    },
+    godamAddress: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    godamPhone: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    godamCity: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    eggsPetiSize: {
+      type: Number,
+      default: 360,
+    },
   },
   {
     timestamps: true,

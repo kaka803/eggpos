@@ -13,11 +13,12 @@ import {
   Phone,
   Store,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from "lucide-react";
 
 export default function SalesmanHistory({ activeSalesman }) {
-  const { salesOrders, openReceipt, EGGS_PER_PETI } = useApp();
+  const { salesOrders, openReceipt, isOrdersLoading, EGGS_PER_PETI } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all"); // 'all' | 'paid' | 'credit'
 
@@ -76,11 +77,19 @@ export default function SalesmanHistory({ activeSalesman }) {
       {/* Header & Search */}
       <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-extrabold text-sm text-slate-900">Sales & Invoices History</h3>
-            <p className="text-[11px] text-slate-500">
-              Total {myOrders.length} orders recorded by you
-            </p>
+          <div className="flex items-center gap-2">
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-900">Sales & Invoices History</h3>
+              <p className="text-[11px] text-slate-500">
+                Total {myOrders.length} orders recorded by you
+              </p>
+            </div>
+            {isOrdersLoading && (
+              <span className="flex items-center gap-1 text-[10px] font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-full">
+                <Loader2 className="w-3 h-3 animate-spin text-teal-700" />
+                <span>Loading...</span>
+              </span>
+            )}
           </div>
           <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-teal-50 text-teal-800 border border-teal-200">
             {myOrders.reduce((a, b) => a + Number(b.petis || 0), 0)} Petis Delivered
@@ -138,7 +147,13 @@ export default function SalesmanHistory({ activeSalesman }) {
       </div>
 
       {/* Orders List */}
-      {filtered.length === 0 ? (
+      {isOrdersLoading && filtered.length === 0 ? (
+        <div className="p-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center space-y-2 flex flex-col items-center justify-center">
+          <Loader2 className="w-6 h-6 animate-spin text-teal-700" />
+          <p className="text-xs font-bold text-slate-700">Loading your delivery history...</p>
+          <p className="text-[11px] text-slate-400">Fetching records from warehouse database.</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="p-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center space-y-2">
           <FileText className="w-8 h-8 text-slate-300 mx-auto" />
           <p className="text-xs font-bold text-slate-700">No sale records found</p>
