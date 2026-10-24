@@ -27,7 +27,8 @@ import {
   Receipt,
   User,
   Loader2,
-  Settings
+  Settings,
+  RefreshCw
 } from "lucide-react";
 
 export default function AdminPage() {
@@ -57,6 +58,7 @@ export default function AdminPage() {
   // Lightweight Recent Orders for Dashboard widget (limit 4)
   const [recentOrders, setRecentOrders] = useState([]);
   const [isRecentLoading, setIsRecentLoading] = useState(false);
+  const [isDashboardRefreshing, setIsDashboardRefreshing] = useState(false);
 
   const fetchRecentOrders = useCallback(async () => {
     setIsRecentLoading(true);
@@ -82,6 +84,16 @@ export default function AdminPage() {
       setIsRecentLoading(false);
     }
   }, []);
+
+  // Full dashboard refresh: stats + salesmen + recent orders
+  const handleDashboardRefresh = useCallback(async () => {
+    setIsDashboardRefreshing(true);
+    try {
+      await Promise.all([fetchStats(), fetchSalesmen(), fetchRecentOrders()]);
+    } finally {
+      setIsDashboardRefreshing(false);
+    }
+  }, [fetchStats, fetchSalesmen, fetchRecentOrders]);
 
   useEffect(() => {
     fetchRecentOrders();
@@ -172,6 +184,21 @@ export default function AdminPage() {
         {/* TAB 1: DASHBOARD OVERVIEW */}
         {activeTab === "dashboard" && (
           <div className="space-y-6">
+            {/* Dashboard Header with Refresh button */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-extrabold text-slate-900">Dashboard Overview</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Live godam performance & field delivery tracking</p>
+              </div>
+              <button
+                onClick={handleDashboardRefresh}
+                disabled={isDashboardRefreshing}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-amber-50 hover:border-amber-300 text-slate-700 hover:text-amber-800 font-bold text-xs shadow-xs transition-all disabled:opacity-60 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isDashboardRefreshing ? "animate-spin text-amber-600" : ""}`} />
+                <span>{isDashboardRefreshing ? "Refreshing..." : "Refresh Dashboard"}</span>
+              </button>
+            </div>
             {/* Top KPI Statistics with Date Filter */}
             <StatCards />
             {/* Salesmen Performance Live Overview */}

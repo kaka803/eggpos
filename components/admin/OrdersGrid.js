@@ -161,124 +161,98 @@ export default function OrdersGrid({ onSelectOrder }) {
         </div>
       </div>
 
-      {/* 2. DATE FILTER BAR (User Requirement: Today, Yesterday, This Week, Month, Custom, All) */}
-      <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-amber-600" />
-            <span className="text-xs font-bold text-slate-700">Date Range Filter:</span>
-          </div>
-
-          {/* Quick Date Pills */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {[
-              { id: "today", label: "Today (Aaj)", desc: "Current day's orders" },
-              { id: "yesterday", label: "Yesterday (Kal)", desc: "Previous day" },
-              { id: "this_week", label: "Last 7 Days", desc: "Past week" },
-              { id: "this_month", label: "This Month", desc: "Current month" },
-              { id: "custom", label: "Custom Date", desc: "Choose specific dates" },
-              { id: "all", label: "All Orders", desc: "Complete history" },
-            ].map((tab) => {
-              const isSelected = dateFilter === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setDateFilter(tab.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                    isSelected
-                      ? "bg-amber-400 text-slate-950 shadow-xs ring-1 ring-amber-500/50"
-                      : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
-                  }`}
-                  title={tab.desc}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
+      {/* 2. DATE FILTER BAR — Compact Dropdown */}
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Date Filter Dropdown */}
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 min-w-[200px]">
+          <CalendarDays className="w-4 h-4 text-amber-600 shrink-0" />
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer w-full"
+          >
+            <option value="today">📅 Today (Aaj)</option>
+            <option value="yesterday">⏮ Yesterday (Kal)</option>
+            <option value="this_week">📆 Last 7 Days</option>
+            <option value="this_month">🗓 This Month</option>
+            <option value="custom">🔎 Custom Date Range</option>
+            <option value="all">📂 All Orders (History)</option>
+          </select>
         </div>
 
-        {/* Custom Date Range Picker (shown when 'custom' is selected) */}
-        {dateFilter === "custom" && (
-          <div className="pt-2 border-t border-slate-200/80 flex flex-wrap items-center gap-3 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="text-slate-500 font-semibold">From:</span>
-              <input
-                type="date"
-                value={customStartDate}
-                onChange={(e) => setCustomStartDate(e.target.value)}
-                className="px-2.5 py-1 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-slate-500 font-semibold">To:</span>
-              <input
-                type="date"
-                value={customEndDate}
-                onChange={(e) => setCustomEndDate(e.target.value)}
-                className="px-2.5 py-1 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
-              />
-            </div>
-            <button
-              onClick={fetchFilteredOrders}
-              className="px-3 py-1 rounded-xl bg-slate-900 text-amber-400 font-bold hover:bg-slate-800 transition-colors"
-            >
-              Apply Filter
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* 3. Secondary Filter Bar: Status, Salesman & Search */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {/* Status Pills */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200">
-            {["All", "On Process", "Completed"].map((status) => (
-              <button
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  statusFilter === status
-                    ? "bg-teal-900 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                {status}
-              </button>
+        {/* Salesman Filter Dropdown */}
+        <div className="flex items-center gap-2 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2">
+          <User className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+          <select
+            value={salesmanFilter}
+            onChange={(e) => setSalesmanFilter(e.target.value)}
+            className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+          >
+            <option value="All">All Salesmen</option>
+            {salesmen.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
             ))}
-          </div>
+          </select>
+        </div>
 
-          {/* Salesman Filter Dropdown */}
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1">
-            <User className="w-3.5 h-3.5 text-amber-600" />
-            <select
-              value={salesmanFilter}
-              onChange={(e) => setSalesmanFilter(e.target.value)}
-              className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
-            >
-              <option value="All">All Salesmen</option>
-              {salesmen.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Status Filter Dropdown */}
+        <div className="flex items-center gap-2 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2">
+          <Filter className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+          >
+            <option value="All">All Status</option>
+            <option value="On Process">On Process</option>
+            <option value="Completed">Completed</option>
+          </select>
         </div>
 
         {/* Search Bar */}
-        <div className="relative w-full sm:w-64">
+        <div className="relative flex-1 min-w-[180px]">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search order #, shop, customer..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400"
           />
         </div>
       </div>
+
+      {/* Custom Date Range Picker (shown when 'custom' is selected) */}
+      {dateFilter === "custom" && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 flex flex-wrap items-center gap-3 text-xs">
+          <CalendarDays className="w-4 h-4 text-amber-600 shrink-0" />
+          <span className="text-xs font-bold text-amber-800">Custom Range:</span>
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500 font-semibold">From:</span>
+            <input
+              type="date"
+              value={customStartDate}
+              onChange={(e) => setCustomStartDate(e.target.value)}
+              className="px-2.5 py-1 bg-white border border-amber-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500 font-semibold">To:</span>
+            <input
+              type="date"
+              value={customEndDate}
+              onChange={(e) => setCustomEndDate(e.target.value)}
+              className="px-2.5 py-1 bg-white border border-amber-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+          </div>
+          <button
+            onClick={fetchFilteredOrders}
+            className="px-4 py-1.5 rounded-xl bg-slate-900 text-amber-400 font-bold hover:bg-slate-800 transition-colors text-xs"
+          >
+            Apply Filter
+          </button>
+        </div>
+      )}
 
       {/* 4. Active Filter Summary Strip */}
       {orders.length > 0 && (
