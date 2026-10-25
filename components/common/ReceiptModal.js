@@ -51,6 +51,65 @@ export default function ReceiptModal() {
     }
   };
 
+  // Direct WhatsApp chat to specific customer number
+  const handleDirectWhatsApp = () => {
+    if (!activeReceipt) return;
+    const rawPhone = (activeReceipt.phone || "").replace(/[^0-9]/g, "");
+    const formattedPhone = rawPhone.startsWith("0")
+      ? `92${rawPhone.slice(1)}`
+      : rawPhone.startsWith("92")
+      ? rawPhone
+      : `92${rawPhone}`;
+
+    const currentSale = Number(
+      activeReceipt.currentSaleAmount ||
+      (Number(activeReceipt.totalAmount) - (Number(activeReceipt.previousBalance) || 0))
+    );
+    const prevBal = Number(activeReceipt.previousBalance) || 0;
+    const grandTotal = Number(activeReceipt.grandTotal || activeReceipt.totalAmount);
+
+    let billDetails = "";
+    if (prevBal > 0) {
+      billDetails =
+        `💵 *Aaj Ka Egg Bill:* Rs. ${currentSale.toLocaleString()}\n` +
+        `⏳ *Peechla Udhaar:* + Rs. ${prevBal.toLocaleString()}\n` +
+        `💰 *Kul Total Bill:* Rs. ${grandTotal.toLocaleString()}\n`;
+    } else {
+      billDetails = `💰 *Total Bill:* Rs. ${grandTotal.toLocaleString()}\n`;
+    }
+
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const receiptLink = origin ? `${origin}/receipt/${activeReceipt.invoiceNo || activeReceipt.id}` : "";
+
+    const text =
+      `*AL-BARKAT EGG WHOLESALE WAREHOUSE*\n` +
+      `🧾 *SALE INVOICE #${activeReceipt.id}*\n` +
+      `------------------------------------\n` +
+      `🏪 *Shop:* ${activeReceipt.shopName}\n` +
+      `👤 *Customer:* ${activeReceipt.shopkeeperName}\n` +
+      `🛵 *Salesman:* ${activeReceipt.salesmanName}\n` +
+      `📅 *Date:* ${activeReceipt.date} at ${activeReceipt.time}\n` +
+      `------------------------------------\n` +
+      `📦 *Quantity:* ${activeReceipt.petis} Petis (${(activeReceipt.netEggs || activeReceipt.totalEggs || 0).toLocaleString()} Eggs)\n` +
+      (Number(activeReceipt.brokenEggs) > 0 ? `⚠️ *Toote Anday:* -${activeReceipt.brokenEggs} Eggs\n` : "") +
+      `💵 *Rate per Peti:* Rs. ${Number(activeReceipt.ratePerPeti).toLocaleString()}\n` +
+      billDetails +
+      `✅ *Paid (Wasool):* Rs. ${Number(activeReceipt.paidAmount).toLocaleString()}\n` +
+      `⚠️ *Remaining (Baqaya):* Rs. ${Number(activeReceipt.remainingBalance).toLocaleString()}\n` +
+      `------------------------------------\n` +
+      (receiptLink ? `📄 *View / Download Thermal Slip (PDF):*\n👉 ${receiptLink}\n------------------------------------\n` : "") +
+      `Thank you for your business!`;
+
+    // Also download PDF slip so it's ready in recent downloads if they want to attach it
+    try {
+      import("@/lib/thermalPdf").then(({ downloadThermalReceiptPDF }) => {
+        downloadThermalReceiptPDF(activeReceipt, EGGS_PER_PETI);
+      });
+    } catch {}
+
+    window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
   const grossEggs = activeReceipt.grossEggs || activeReceipt.petis * EGGS_PER_PETI + (activeReceipt.looseEggs || 0);
   const brokenEggs = Number(activeReceipt.brokenEggs) || 0;
   const netEggs = activeReceipt.netEggs || grossEggs - brokenEggs;
@@ -311,42 +370,54 @@ export default function ReceiptModal() {
         </div>
 
         {/* Modal Action Buttons */}
-        <div className="bg-slate-900 p-3 rounded-b-2xl grid grid-cols-2 gap-2 border-t border-slate-800 mt-2">
+        <div className="bg-slate-900 p-3 rounded-b-2xl space-y-2 border-t border-slate-800 mt-2">
+          {/* Main Direct WhatsApp button */}
           <button
-            onClick={handleWhatsAppShare}
-            disabled={isSharingPdf}
-            className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors font-sans cursor-pointer"
+            onClick={handleDirectWhatsApp}
+            className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center justify-center gap-2 shadow-md shadow-emerald-950/30 transition-all font-sans cursor-pointer"
           >
-            {isSharingPdf ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Preparing PDF...</span>
-              </>
-            ) : (
-              <>
-                <MessageCircle className="w-4 h-4" />
-                <span>WhatsApp PDF</span>
-              </>
-            )}
+            <MessageCircle className="w-4 h-4 text-emerald-100" />
+            <span>Open WhatsApp Chat ({activeReceipt.phone || "Customer"})</span>
           </button>
 
-          <button
-            onClick={handleDownloadPDF}
-            disabled={isGeneratingPdf}
-            className="py-2.5 px-3 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 text-xs font-black flex items-center justify-center gap-1.5 transition-colors font-sans"
-          >
-            {isGeneratingPdf ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
-                <span>Creating PDF...</span>
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4" />
-                <span>Download PDF Slip</span>
-              </>
-            )}
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={handleWhatsAppShare}
+              disabled={isSharingPdf}
+              className="py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 disabled:opacity-50 text-slate-200 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors font-sans cursor-pointer"
+              title="Share PDF Document directly"
+            >
+              {isSharingPdf ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Preparing...</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Share PDF File</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={handleDownloadPDF}
+              disabled={isGeneratingPdf}
+              className="py-2 px-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 text-[11px] font-black flex items-center justify-center gap-1.5 transition-colors font-sans cursor-pointer"
+            >
+              {isGeneratingPdf ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                  <span>Creating...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download Slip</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -68,6 +68,9 @@ export default function SalesmanHistory({ activeSalesman }) {
       billBreakdown = `💰 *Total Bill:* Rs. ${grandTotal.toLocaleString()}\n`;
     }
 
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const receiptLink = origin ? `${origin}/receipt/${receipt.invoiceNo || receipt.id}` : "";
+
     const text =
       `*AL-BARKAT EGG WHOLESALE*\n` +
       `🧾 *SALE INVOICE #${receipt.id}*\n` +
@@ -81,6 +84,7 @@ export default function SalesmanHistory({ activeSalesman }) {
       `✅ *Paid (Wasool):* Rs. ${Number(receipt.paidAmount).toLocaleString()}\n` +
       `⚠️ *Remaining (Baqaya Udhaar):* Rs. ${Number(receipt.remainingBalance).toLocaleString()}\n` +
       `------------------------------------\n` +
+      (receiptLink ? `📄 *View / Download Thermal Slip (PDF):*\n👉 ${receiptLink}\n------------------------------------\n` : "") +
       `Thank you for your business!`;
 
     return `https://wa.me/${formattedPhone}?text=${encodeURIComponent(text)}`;
