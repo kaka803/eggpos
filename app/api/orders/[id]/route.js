@@ -18,6 +18,11 @@ export async function GET(req, { params }) {
     }
 
     const orConditions = [{ invoiceNo: id }];
+    if (typeof id === "string" && id.startsWith("INV-")) {
+      orConditions.push({ invoiceNo: id.replace("INV-", "") });
+    } else if (typeof id === "string") {
+      orConditions.push({ invoiceNo: `INV-${id}` });
+    }
     if (mongoose.Types.ObjectId.isValid(id)) {
       orConditions.push({ _id: id });
     }
@@ -55,6 +60,10 @@ export async function GET(req, { params }) {
       ratePerEgg: order.ratePerEgg || (order.ratePerPeti ? (order.ratePerPeti / EGGS_PER_PETI).toFixed(2) : "0"),
       brokenDeduction: order.brokenDeduction || 0,
       totalAmount: order.totalAmount,
+      previousBalance: order.previousBalance || 0,
+      grandTotal: order.grandTotal || (order.totalAmount + (order.previousBalance || 0)),
+      previousOrdersUdhaar: order.previousOrdersUdhaar || [],
+      settledInOrder: order.settledInOrder || null,
       paidAmount: order.paidAmount,
       remainingBalance: order.remainingBalance,
       paymentStatus: order.paymentStatus,

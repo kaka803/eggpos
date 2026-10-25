@@ -19,13 +19,7 @@ export function AppProvider({ children }) {
         }
       }
     }
-    return {
-      role: "admin",
-      id: "ADMIN-01",
-      name: "Godam Admin",
-      username: "admin",
-      code: "AD",
-    };
+    return null;
   });
 
   // Aggregated Database KPIs from /api/stats (Computed via fast Mongo aggregation)
@@ -323,6 +317,37 @@ export function AppProvider({ children }) {
     return orderData;
   };
 
+  // Update sale order (Admin only)
+  const updateSaleOrder = async (orderData) => {
+    try {
+      const res = await fetch("/api/orders", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderData),
+      });
+      const data = await res.json();
+      if (data.success && data.order) {
+        const updated = data.order;
+        // Invalidate and update cache
+        orderDetailCache.current[updated.id] = updated;
+        if (updated._id) orderDetailCache.current[updated._id] = updated;
+        if (updated.invoiceNo) orderDetailCache.current[updated.invoiceNo] = updated;
+
+        setSalesOrders((prev) =>
+          prev.map((o) => (o.id === updated.id || o._id === updated._id ? updated : o))
+        );
+
+        fetchStats(); // Recalculate KPIs
+        return { success: true, order: updated };
+      } else {
+        return { success: false, error: data.error || "Failed to update order" };
+      }
+    } catch (e) {
+      console.error("Update Sale Order Error:", e);
+      return { success: false, error: e.message };
+    }
+  };
+
   // Cloudinary Image Upload helper
   const uploadShopImage = async (base64OrData) => {
     try {
@@ -415,6 +440,7 @@ export function AppProvider({ children }) {
         fetchOrders,
         fetchOrderDetails,
         addSaleOrder,
+        updateSaleOrder,
         isOrdersLoading,
         totalStockInPetis,
         totalStockInEggs,

@@ -111,6 +111,31 @@ const OrderSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    currentSaleAmount: {
+      type: Number,
+      default: 0,
+    },
+    previousBalance: {
+      type: Number,
+      default: 0,
+    },
+    grandTotal: {
+      type: Number,
+      default: 0,
+    },
+    previousOrdersUdhaar: [
+      {
+        invoiceNo: String,
+        date: String,
+        remainingBalance: Number,
+        totalAmount: Number,
+        paidAmount: Number,
+      },
+    ],
+    settledInOrder: {
+      type: String,
+      default: null,
+    },
     notes: {
       type: String,
       default: "",

@@ -19,6 +19,20 @@ export default function TodayDeliveries({ activeSalesman }) {
       ? rawPhone
       : `92${rawPhone}`;
 
+    const currentSale = Number(receipt.currentSaleAmount || (Number(receipt.totalAmount) - (Number(receipt.previousBalance) || 0)));
+    const prevBal = Number(receipt.previousBalance) || 0;
+    const grandTotal = Number(receipt.grandTotal || receipt.totalAmount);
+
+    let billDetails = "";
+    if (prevBal > 0) {
+      billDetails =
+        `💵 *Aaj Ka Egg Bill:* Rs. ${currentSale.toLocaleString()}\n` +
+        `⏳ *Peechla Udhaar:* + Rs. ${prevBal.toLocaleString()}\n` +
+        `💰 *Kul Total Bill:* Rs. ${grandTotal.toLocaleString()}\n`;
+    } else {
+      billDetails = `💰 *Total Bill:* Rs. ${grandTotal.toLocaleString()}\n`;
+    }
+
     const text =
       `*AL-BARKAT EGG WHOLESALE WAREHOUSE*\n` +
       `🧾 *SALE INVOICE #${receipt.id}*\n` +
@@ -28,11 +42,12 @@ export default function TodayDeliveries({ activeSalesman }) {
       `🛵 *Salesman:* ${receipt.salesmanName}\n` +
       `📅 *Date:* ${receipt.date} at ${receipt.time}\n` +
       `------------------------------------\n` +
-      `📦 *Quantity:* ${receipt.petis} Petis (${receipt.totalEggs.toLocaleString()} Eggs)\n` +
+      `📦 *Quantity:* ${receipt.petis} Petis (${(receipt.netEggs || receipt.totalEggs).toLocaleString()} Eggs)\n` +
+      (Number(receipt.brokenEggs) > 0 ? `⚠️ *Toote Anday:* -${receipt.brokenEggs} Eggs\n` : "") +
       `💵 *Rate per Peti:* Rs. ${Number(receipt.ratePerPeti).toLocaleString()}\n` +
-      `💰 *Total Bill:* Rs. ${Number(receipt.totalAmount).toLocaleString()}\n` +
-      `✅ *Paid Amount:* Rs. ${Number(receipt.paidAmount).toLocaleString()}\n` +
-      `⚠️ *Remaining Balance:* Rs. ${Number(receipt.remainingBalance).toLocaleString()}\n` +
+      billDetails +
+      `✅ *Paid (Wasool):* Rs. ${Number(receipt.paidAmount).toLocaleString()}\n` +
+      `⚠️ *Remaining (Baqaya):* Rs. ${Number(receipt.remainingBalance).toLocaleString()}\n` +
       `------------------------------------\n` +
       `Thank you for your business!`;
 
@@ -78,13 +93,20 @@ export default function TodayDeliveries({ activeSalesman }) {
               className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between text-xs hover:border-amber-300 transition-colors"
             >
               <div>
-                <strong className="text-slate-900 block text-xs font-extrabold">{item.shopName}</strong>
+                <div className="flex items-center gap-2">
+                  <strong className="text-slate-900 block text-xs font-extrabold">{item.shopName}</strong>
+                  {Number(item.previousBalance) > 0 && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-800 border border-red-200">
+                      + Rs. {Number(item.previousBalance).toLocaleString()} Udhaar
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] text-slate-500 mt-0.5">
                   {item.petis} Petis ({(item.netEggs || item.totalEggs).toLocaleString()} eggs)
                   {Number(item.brokenEggs) > 0 && (
                     <span className="text-red-600 font-semibold ml-1">(-{item.brokenEggs} broken)</span>
                   )}
-                  {" "}• Rs. {Number(item.totalAmount).toLocaleString()}
+                  {" "}• Bill: Rs. {Number(item.grandTotal || item.totalAmount).toLocaleString()}
                 </p>
                 {item.remainingBalance > 0 ? (
                   <span className="text-[10px] font-bold text-red-600">

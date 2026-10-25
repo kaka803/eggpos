@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/components/common/Header";
 import StatCards from "@/components/admin/StatCards";
 import OrdersGrid from "@/components/admin/OrdersGrid";
 import OrderDetailsModal from "@/components/admin/OrderDetailsModal";
+import EditOrderModal from "@/components/admin/EditOrderModal";
 import StockInwardView from "@/components/admin/StockInwardView";
 import SalesmenView from "@/components/admin/SalesmenView";
 import ReportsView from "@/components/admin/ReportsView";
@@ -32,6 +34,7 @@ import {
 } from "lucide-react";
 
 export default function AdminPage() {
+  const router = useRouter();
   const {
     salesmen,
     stockInwards,
@@ -42,6 +45,9 @@ export default function AdminPage() {
     EGGS_PER_PETI,
   } = useApp();
 
+  // ── All useState hooks (must be declared before any early return) ──
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+
   // Tab State: 'dashboard' | 'orders' | 'stock' | 'salesmen' | 'reports'
   const [activeTab, setActiveTab] = useState("dashboard");
   const [selectedReportSalesmanId, setSelectedReportSalesmanId] = useState("All");
@@ -49,6 +55,10 @@ export default function AdminPage() {
   // Selected Order for OrderDetailsModal
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
+
+  // Editing Order for EditOrderModal (Admin Only)
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [showEditOrderModal, setShowEditOrderModal] = useState(false);
 
   // Modals
   const [showStockModal, setShowStockModal] = useState(false);
@@ -59,6 +69,28 @@ export default function AdminPage() {
   const [recentOrders, setRecentOrders] = useState([]);
   const [isRecentLoading, setIsRecentLoading] = useState(false);
   const [isDashboardRefreshing, setIsDashboardRefreshing] = useState(false);
+
+  // Authentication Guard: Only logged-in admin can access this page
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("andagodam_user");
+      if (!saved) {
+        router.replace("/login");
+        return;
+      }
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.role !== "admin") {
+          router.replace("/login");
+          return;
+        }
+      } catch (e) {
+        router.replace("/login");
+        return;
+      }
+      setIsAuthChecking(false);
+    }
+  }, [router]);
 
   const fetchRecentOrders = useCallback(async () => {
     setIsRecentLoading(true);
@@ -99,7 +131,7 @@ export default function AdminPage() {
     fetchRecentOrders();
   }, [fetchRecentOrders]);
 
-  // Tab switching with lazy loading (loads data only when the tab is visited)
+  // Tab switching with lazy loading (loads data only when the tab is visited for first time)
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
     if (tabId === "stock" && stockInwards.length === 0) {
@@ -108,7 +140,7 @@ export default function AdminPage() {
     if (tabId === "salesmen" && salesmen.length === 0) {
       fetchSalesmen();
     }
-    if (tabId === "dashboard") {
+    if (tabId === "dashboard" && recentOrders.length === 0) {
       fetchStats();
       fetchRecentOrders();
     }
@@ -119,6 +151,21 @@ export default function AdminPage() {
     setShowOrderModal(true);
   };
 
+  const handleOpenEditOrder = (order) => {
+    setEditingOrder(order);
+    setShowEditOrderModal(true);
+  };
+
+  const handleOrderUpdated = (updatedOrder) => {
+    setRecentOrders((prev) =>
+      prev.map((o) => (o.id === updatedOrder.id || o._id === updatedOrder._id ? updatedOrder : o))
+    );
+    if (selectedOrder && (selectedOrder.id === updatedOrder.id || selectedOrder._id === updatedOrder._id)) {
+      setSelectedOrder(updatedOrder);
+    }
+    fetchStats();
+  };
+
   const adminTabs = [
     { id: "dashboard", label: "Dashboard", shortLabel: "Home", icon: Package },
     { id: "orders", label: "Orders Directory", shortLabel: "Orders", icon: ShoppingCart },
@@ -127,6 +174,19 @@ export default function AdminPage() {
     { id: "reports", label: "Sales Reports & Khata", shortLabel: "Reports", icon: FileText },
     { id: "settings", label: "Settings", shortLabel: "Settings", icon: Settings }
   ];
+
+  // Early return AFTER all hooks — shows loader while auth is being verified
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen bg-[#F7F8FA] flex flex-col justify-center items-center p-4 font-sans">
+        <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 text-center max-w-sm w-full space-y-3">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-amber-500" />
+          <h3 className="font-extrabold text-sm text-slate-800">Verifying Admin Session...</h3>
+          <p className="text-xs text-slate-500">Only authorized admins can access this portal.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F7F8FA] text-slate-800 flex flex-col font-sans">
@@ -382,6 +442,13 @@ export default function AdminPage() {
                                 Details
                               </button>
                               <button
+                                onClick={() => handleOpenEditOrder(order)}
+                                className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 font-bold text-teal-800 text-[11px] border border-teal-200 cursor-pointer"
+                                title="Admin: Edit Sale"
+                              >
+                                Edit
+                              </button>
+                              <button
                                 onClick={() => openReceipt(order)}
                                 className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-500 font-black text-slate-950 text-[11px] flex items-center gap-1 cursor-pointer"
                               >
@@ -402,7 +469,10 @@ export default function AdminPage() {
 
         {/* TAB 2: SEPARATE ORDERS TAB (DEDICATED ORDERS DIRECTORY) */}
         {activeTab === "orders" && (
-          <OrdersGrid onSelectOrder={handleOpenOrderDetails} />
+          <OrdersGrid
+            onSelectOrder={handleOpenOrderDetails}
+            onEditOrder={handleOpenEditOrder}
+          />
         )}
 
         {/* TAB 3: STOCK INWARD */}
@@ -452,6 +522,18 @@ export default function AdminPage() {
           setShowOrderModal(false);
           setSelectedOrder(null);
         }}
+        onEditOrder={handleOpenEditOrder}
+      />
+
+      {/* Admin Edit Order Modal */}
+      <EditOrderModal
+        isOpen={showEditOrderModal}
+        order={editingOrder}
+        onClose={() => {
+          setShowEditOrderModal(false);
+          setEditingOrder(null);
+        }}
+        onOrderUpdated={handleOrderUpdated}
       />
 
       {/* Stock & Salesman Modals */}

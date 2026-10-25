@@ -2,66 +2,53 @@
 
 import React, { useState, useRef } from "react";
 import { useApp } from "@/context/AppContext";
-import { Share2, Download, Loader2, X } from "lucide-react";
+import { Share2, Download, Loader2, X, MessageCircle } from "lucide-react";
 
 export default function ReceiptModal() {
   const { activeReceipt, showReceiptModal, closeReceipt, EGGS_PER_PETI } = useApp();
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isSharingPdf, setIsSharingPdf] = useState(false);
   const receiptRef = useRef(null);
 
   if (!showReceiptModal || !activeReceipt) return null;
 
-  const generateWhatsAppLink = (receipt) => {
-    const rawPhone = (receipt.phone || "").replace(/[^0-9]/g, "");
-    const formattedPhone = rawPhone.startsWith("0")
-      ? `92${rawPhone.slice(1)}`
-      : rawPhone.startsWith("92")
-      ? rawPhone
-      : `92${rawPhone}`;
+  // Share PDF directly to WhatsApp using Web Share API
+  const handleWhatsAppShare = async () => {
+    if (!activeReceipt) return;
+    setIsSharingPdf(true);
+    try {
+      const { getThermalReceiptPDFBlob } = await import("@/lib/thermalPdf");
+      const pdfBlob = getThermalReceiptPDFBlob(activeReceipt, EGGS_PER_PETI);
+      if (!pdfBlob) throw new Error("PDF generation failed");
 
-    const grossCount = receipt.grossEggs || receipt.petis * EGGS_PER_PETI + (receipt.looseEggs || 0);
-    const broken = Number(receipt.brokenEggs) || 0;
-    const netCount = receipt.netEggs || grossCount - broken;
+      const fileName = `invoice_${activeReceipt.id || "receipt"}.pdf`;
+      const pdfFile = new File([pdfBlob], fileName, { type: "application/pdf" });
 
-    const text =
-      `================================\n` +
-      `   *AL-BARKAT EGG WHOLESALE*    \n` +
-      `     *CENTRAL GODAM & SUPPLY*   \n` +
-      `  Main Poultry Market • Tel: 0300-1234567\n` +
-      `================================\n` +
-      `🧾 *INVOICE #:* ${receipt.id}\n` +
-      `📅 *DATE:* ${receipt.date}  ⏰ ${receipt.time}\n` +
-      `🛵 *SALESMAN:* ${receipt.salesmanName}\n` +
-      `--------------------------------\n` +
-      `🏪 *SHOP:* ${receipt.shopName}\n` +
-      `👤 *CUSTOMER:* ${receipt.shopkeeperName}\n` +
-      `📞 *TEL:* ${receipt.phone}\n` +
-      `📍 *AREA:* ${receipt.area}\n` +
-      `================================\n` +
-      `QTY   ITEM / DESCRIPTION   AMOUNT\n` +
-      `--------------------------------\n` +
-      `${receipt.petis} Petis (${(receipt.petis * EGGS_PER_PETI).toLocaleString()} Eggs)  Rs. ${(receipt.petis * receipt.ratePerPeti).toLocaleString()}\n` +
-      `  @ Rs. ${Number(receipt.ratePerPeti).toLocaleString()} / Peti\n` +
-      (receipt.looseEggs > 0
-        ? `${receipt.looseEggs} Loose Eggs        Rs. ${Math.round(receipt.looseEggs * (receipt.ratePerPeti / EGGS_PER_PETI)).toLocaleString()}\n`
-        : "") +
-      (broken > 0
-        ? `⚠️ *LESS DAMAGE (TOOTE ANDAY):* -${broken} Eggs (-Rs. ${Number(receipt.brokenDeduction || 0).toLocaleString()})\n`
-        : "") +
-      `--------------------------------\n` +
-      `🥚 *NET BILLABLE EGGS:* ${netCount.toLocaleString()} Eggs\n` +
-      `📊 *RATE PER EGG:* Rs. ${receipt.ratePerEgg}\n` +
-      `================================\n` +
-      `💰 *TOTAL BILL:*      Rs. ${Number(receipt.totalAmount).toLocaleString()}\n` +
-      `💵 *CASH RECEIVED:*   Rs. ${Number(receipt.paidAmount).toLocaleString()}\n` +
-      `⚠️ *BALANCE / UDHAAR:* Rs. ${Number(receipt.remainingBalance).toLocaleString()}\n` +
-      `================================\n` +
-      `*STATUS:* ${receipt.paymentStatus} (${receipt.paymentMode})\n\n` +
-      `   * THANK YOU FOR BUSINESS *   \n` +
-      `    ~ Tijarat Me Barkat Ho ~    \n` +
-      `================================`;
-
-    return `https://wa.me/${formattedPhone}?text=${encodeURIComponent(text)}`;
+      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        // Web Share API with PDF file — opens native share sheet (WhatsApp, etc.)
+        await navigator.share({
+          title: `Invoice #${activeReceipt.id} — ${activeReceipt.shopName}`,
+          text: `Al-Barkat Egg Wholesale — Invoice #${activeReceipt.id}`,
+          files: [pdfFile],
+        });
+      } else {
+        // Fallback: download PDF (desktop browsers that don't support file sharing)
+        const url = URL.createObjectURL(pdfBlob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+        alert("PDF downloaded — open WhatsApp and attach the file manually.");
+      }
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        console.error("WhatsApp PDF share failed:", err);
+        alert("Sharing failed. PDF will be downloaded instead.");
+      }
+    } finally {
+      setIsSharingPdf(false);
+    }
   };
 
   const grossEggs = activeReceipt.grossEggs || activeReceipt.petis * EGGS_PER_PETI + (activeReceipt.looseEggs || 0);
@@ -249,20 +236,58 @@ export default function ReceiptModal() {
 
           {/* Totals Section */}
           <div className="space-y-1 py-1 text-xs">
-            <div className="flex justify-between font-black text-sm text-slate-950">
-              <span>TOTAL BILL:</span>
-              <span>Rs. {Number(activeReceipt.totalAmount).toLocaleString()}</span>
-            </div>
+            {/* Today's Fresh Egg Sale Amount */}
             <div className="flex justify-between font-bold text-slate-800">
-              <span>CASH RECEIVED:</span>
+              <span>TODAY EGG SALE:</span>
+              <span>
+                Rs. {Number(
+                  activeReceipt.currentSaleAmount ||
+                  (Number(activeReceipt.totalAmount) - (Number(activeReceipt.previousBalance) || 0))
+                ).toLocaleString()}
+              </span>
+            </div>
+
+            {/* Previous Udhaar Added to Bill */}
+            {Number(activeReceipt.previousBalance) > 0 && (
+              <div className="flex justify-between font-bold text-red-700 bg-red-50/80 px-1 py-0.5 rounded">
+                <span>PREVIOUS UDHAAR:</span>
+                <span>+ Rs. {Number(activeReceipt.previousBalance).toLocaleString()}</span>
+              </div>
+            )}
+
+            {/* Kul Bill / Grand Total */}
+            <div className="flex justify-between font-black text-sm text-slate-950 pt-1 border-t border-slate-300">
+              <span>KUL BILL (TOTAL PAYABLE):</span>
+              <span>
+                Rs. {Number(
+                  activeReceipt.grandTotal || activeReceipt.totalAmount
+                ).toLocaleString()}
+              </span>
+            </div>
+
+            <div className="flex justify-between font-bold text-emerald-800">
+              <span>CASH RECEIVED (WASOOL):</span>
               <span>Rs. {Number(activeReceipt.paidAmount).toLocaleString()}</span>
             </div>
+
             <div className="flex justify-between font-black text-slate-950 pt-1 border-t border-dashed border-slate-400">
-              <span>BALANCE / UDHAAR:</span>
-              <span className={activeReceipt.remainingBalance > 0 ? "underline" : ""}>
+              <span>NET REMAINING UDHAAR (BAQAYA):</span>
+              <span className={activeReceipt.remainingBalance > 0 ? "underline text-red-700 font-black" : "text-emerald-800"}>
                 Rs. {Number(activeReceipt.remainingBalance).toLocaleString()}
               </span>
             </div>
+
+            {activeReceipt.previousOrdersUdhaar && activeReceipt.previousOrdersUdhaar.length > 0 && (
+              <div className="pt-1.5 text-[9px] text-slate-500 border-t border-slate-200">
+                <span className="font-bold uppercase block text-slate-600">Pending Invoices Included:</span>
+                {activeReceipt.previousOrdersUdhaar.map((p, idx) => (
+                  <div key={idx} className="flex justify-between">
+                    <span>• #{p.invoiceNo} ({p.date}):</span>
+                    <span>Rs. {Number(p.remainingBalance).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="text-center text-slate-500 my-1 select-none">
@@ -287,15 +312,23 @@ export default function ReceiptModal() {
 
         {/* Modal Action Buttons */}
         <div className="bg-slate-900 p-3 rounded-b-2xl grid grid-cols-2 gap-2 border-t border-slate-800 mt-2">
-          <a
-            href={generateWhatsAppLink(activeReceipt)}
-            target="_blank"
-            rel="noreferrer"
-            className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors font-sans"
+          <button
+            onClick={handleWhatsAppShare}
+            disabled={isSharingPdf}
+            className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-colors font-sans cursor-pointer"
           >
-            <Share2 className="w-4 h-4" />
-            <span>Send WhatsApp</span>
-          </a>
+            {isSharingPdf ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Preparing PDF...</span>
+              </>
+            ) : (
+              <>
+                <MessageCircle className="w-4 h-4" />
+                <span>WhatsApp PDF</span>
+              </>
+            )}
+          </button>
 
           <button
             onClick={handleDownloadPDF}

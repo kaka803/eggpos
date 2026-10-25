@@ -79,7 +79,7 @@ export default function StockModal({ isOpen, onClose, editRecord }) {
       };
       updateStockInward(updated);
     } else {
-      const newId = `STK-${1000 + stockInwards.length + 1}`;
+      const newId = `STK-${String(stockInwards.length + 1).padStart(4, "0")}`;
       const record = {
         id: newId,
         supplier: form.supplier,

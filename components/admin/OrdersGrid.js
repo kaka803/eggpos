@@ -15,11 +15,12 @@ import {
   CalendarDays,
   Filter,
   RefreshCw,
-  Loader2
+  Loader2,
+  Edit3
 } from "lucide-react";
 
-export default function OrdersGrid({ onSelectOrder }) {
-  const { salesmen, openReceipt, EGGS_PER_PETI } = useApp();
+export default function OrdersGrid({ onSelectOrder, onEditOrder }) {
+  const { salesmen, openReceipt, EGGS_PER_PETI, currentUser } = useApp();
 
   // View mode: 'list' (default) or 'grid'
   const [viewMode, setViewMode] = useState("list");
@@ -409,15 +410,25 @@ export default function OrdersGrid({ onSelectOrder }) {
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => onSelectOrder && onSelectOrder(order)}
-                            className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors"
+                            className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
                             title="View Full Breakdown & Shop Details"
                           >
                             <Eye className="w-3.5 h-3.5" />
                             <span>Details</span>
                           </button>
+                          {currentUser?.role === "admin" && (
+                            <button
+                              onClick={() => onEditOrder && onEditOrder(order)}
+                              className="px-2.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 font-bold text-xs flex items-center gap-1 border border-teal-200 transition-colors cursor-pointer"
+                              title="Admin: Edit Sale Order"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-teal-700" />
+                              <span>Edit</span>
+                            </button>
+                          )}
                           <button
                             onClick={() => openReceipt(order)}
-                            className="px-2.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs flex items-center gap-1 shadow-xs transition-colors"
+                            className="px-2.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
                             title="Print Thermal Slip"
                           >
                             <Receipt className="w-3.5 h-3.5" />
@@ -499,13 +510,23 @@ export default function OrdersGrid({ onSelectOrder }) {
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => onSelectOrder && onSelectOrder(order)}
-                        className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs"
+                        className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
                       >
                         Details
                       </button>
+                      {currentUser?.role === "admin" && (
+                        <button
+                          onClick={() => onEditOrder && onEditOrder(order)}
+                          className="px-2.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 font-bold text-xs border border-teal-200 flex items-center gap-1 cursor-pointer"
+                          title="Admin: Edit Sale"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-teal-700" />
+                          <span>Edit</span>
+                        </button>
+                      )}
                       <button
                         onClick={() => openReceipt(order)}
-                        className="px-2.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs"
+                        className="px-2.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs cursor-pointer"
                       >
                         Receipt
                       </button>

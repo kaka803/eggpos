@@ -54,6 +54,20 @@ export default function SalesmanHistory({ activeSalesman }) {
       ? rawPhone
       : `92${rawPhone}`;
 
+    const currentSale = Number(receipt.currentSaleAmount || (Number(receipt.totalAmount) - (Number(receipt.previousBalance) || 0)));
+    const prevBal = Number(receipt.previousBalance) || 0;
+    const grandTotal = Number(receipt.grandTotal || receipt.totalAmount);
+
+    let billBreakdown = "";
+    if (prevBal > 0) {
+      billBreakdown =
+        `💵 *Aaj Ka Bill:* Rs. ${currentSale.toLocaleString()}\n` +
+        `⏳ *Peechla Udhaar:* + Rs. ${prevBal.toLocaleString()}\n` +
+        `💰 *Kul Total Bill:* Rs. ${grandTotal.toLocaleString()}\n`;
+    } else {
+      billBreakdown = `💰 *Total Bill:* Rs. ${grandTotal.toLocaleString()}\n`;
+    }
+
     const text =
       `*AL-BARKAT EGG WHOLESALE*\n` +
       `🧾 *SALE INVOICE #${receipt.id}*\n` +
@@ -63,9 +77,9 @@ export default function SalesmanHistory({ activeSalesman }) {
       `📅 *Date:* ${receipt.date} at ${receipt.time}\n` +
       `📦 *Petis:* ${receipt.petis} Petis (${(receipt.netEggs || receipt.totalEggs).toLocaleString()} Eggs)\n` +
       (receipt.brokenEggs > 0 ? `⚠️ *Broken Eggs:* -${receipt.brokenEggs} Eggs\n` : "") +
-      `💰 *Total Bill:* Rs. ${Number(receipt.totalAmount).toLocaleString()}\n` +
-      `✅ *Paid:* Rs. ${Number(receipt.paidAmount).toLocaleString()}\n` +
-      `⚠️ *Remaining Udhaar:* Rs. ${Number(receipt.remainingBalance).toLocaleString()}\n` +
+      billBreakdown +
+      `✅ *Paid (Wasool):* Rs. ${Number(receipt.paidAmount).toLocaleString()}\n` +
+      `⚠️ *Remaining (Baqaya Udhaar):* Rs. ${Number(receipt.remainingBalance).toLocaleString()}\n` +
       `------------------------------------\n` +
       `Thank you for your business!`;
 

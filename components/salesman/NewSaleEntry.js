@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import {
   Store,
@@ -14,7 +14,10 @@ import {
   Sparkles,
   HelpCircle,
   FileCheck,
-  Loader2
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  History
 } from "lucide-react";
 
 export default function NewSaleEntry({ activeSalesman }) {
@@ -22,7 +25,7 @@ export default function NewSaleEntry({ activeSalesman }) {
 
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [paymentPreset, setPaymentPreset] = useState("full"); // 'full' | 'credit' | 'custom'
+  const [paymentPreset, setPaymentPreset] = useState("full"); // 'full' | 'current' | 'credit' | 'custom'
 
   const [form, setForm] = useState({
     entryMode: "manual", // 'manual' | 'photo'
@@ -39,6 +42,116 @@ export default function NewSaleEntry({ activeSalesman }) {
     paidAmount: "7300",
   });
 
+  // State for previous pending udhaar lookup by phone
+  const [pendingUdhaar, setPendingUdhaar] = useState({
+    isLoading: false,
+    hasPending: false,
+    total: 0,
+    orders: [],
+    customerDetails: null,
+  });
+  const [showUdhaarDetails, setShowUdhaarDetails] = useState(false);
+
+  // Auto-lookup previous pending udhaar with instant local check + API DB query
+  const checkPhoneUdhaar = async (phoneToTest) => {
+    const rawDigits = (phoneToTest || "").replace(/[^0-9]/g, "");
+    if (rawDigits.length < 7) {
+      setPendingUdhaar({
+        isLoading: false,
+        hasPending: false,
+        total: 0,
+        orders: [],
+        customerDetails: null,
+      });
+      return;
+    }
+
+    // 1. Instant synchronous check against in-memory salesOrders
+    const last7 = rawDigits.slice(-7);
+    const localMatches = (salesOrders || []).filter((o) => {
+      const oDigits = (o.phone || "").replace(/[^0-9]/g, "");
+      const isMatch = oDigits.endsWith(last7) || oDigits.includes(last7);
+      const hasBalance = Number(o.remainingBalance) > 0 && !o.settledInOrder;
+      return isMatch && hasBalance;
+    });
+
+    if (localMatches.length > 0) {
+      const localTotal = localMatches.reduce((s, o) => s + (Number(o.remainingBalance) || 0), 0);
+      setPendingUdhaar({
+        isLoading: false,
+        hasPending: true,
+        total: localTotal,
+        orders: localMatches.map((o) => ({
+          id: o.invoiceNo || o.id,
+          invoiceNo: o.invoiceNo || o.id,
+          date: o.date,
+          time: o.time,
+          shopName: o.shopName,
+          shopkeeperName: o.shopkeeperName,
+          petis: o.petis,
+          netEggs: o.netEggs || o.totalEggs,
+          totalAmount: o.totalAmount,
+          paidAmount: o.paidAmount,
+          remainingBalance: o.remainingBalance,
+          paymentStatus: o.paymentStatus,
+        })),
+        customerDetails: {
+          shopName: localMatches[0].shopName,
+          shopkeeperName: localMatches[0].shopkeeperName,
+          phone: localMatches[0].phone,
+          area: localMatches[0].area,
+        },
+      });
+
+      // Auto fill shop & customer details if currently blank
+      setForm((prev) => ({
+        ...prev,
+        shopName: prev.shopName || localMatches[0].shopName || "",
+        shopkeeperName: prev.shopkeeperName || localMatches[0].shopkeeperName || "",
+        area: prev.area || localMatches[0].area || "",
+      }));
+    }
+
+    // 2. Query MongoDB backend for full persistent records
+    try {
+      setPendingUdhaar((prev) => ({ ...prev, isLoading: true }));
+      const res = await fetch(`/api/orders?pendingUdhaarPhone=${encodeURIComponent(rawDigits)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setPendingUdhaar({
+            isLoading: false,
+            hasPending: data.hasPendingUdhaar,
+            total: data.totalPendingUdhaar || 0,
+            orders: data.pendingOrders || [],
+            customerDetails: data.customerDetails || null,
+          });
+
+          // Auto-fill customer profile details
+          if (data.customerDetails) {
+            setForm((prev) => ({
+              ...prev,
+              shopName: prev.shopName || data.customerDetails.shopName || "",
+              shopkeeperName: prev.shopkeeperName || data.customerDetails.shopkeeperName || "",
+              area: prev.area || data.customerDetails.area || "",
+            }));
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to check pending udhaar:", err);
+    } finally {
+      setPendingUdhaar((prev) => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      checkPhoneUdhaar(form.phone);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [form.phone]);
+
   // Egg and Price Math with Broken Eggs calculation
   const petisCount = Number(form.petis) || 0;
   const looseCount = Number(form.looseEggs) || 0;
@@ -53,8 +166,21 @@ export default function NewSaleEntry({ activeSalesman }) {
   const brokenDeduction = Math.round(brokenCount * singleEggRate);
   const totalBill = Math.max(0, grossBill - brokenDeduction);
 
-  const paid = paymentPreset === "full" ? totalBill : paymentPreset === "credit" ? 0 : Number(form.paidAmount) || 0;
-  const remainingBalance = Math.max(0, totalBill - paid);
+  // Previous balance and grand total math
+  const previousUdhaarTotal = pendingUdhaar.hasPending ? pendingUdhaar.total : 0;
+  const grandTotal = totalBill + previousUdhaarTotal;
+
+  // Amount paid depends on preset or custom input
+  const paid =
+    paymentPreset === "full"
+      ? grandTotal
+      : paymentPreset === "current"
+      ? totalBill
+      : paymentPreset === "credit"
+      ? 0
+      : Number(form.paidAmount) || 0;
+
+  const remainingBalance = Math.max(0, grandTotal - paid);
 
   // Recalculate bill when +/- buttons are clicked (not direct typing)
   const updatePetis = (newPetis) => {
@@ -64,17 +190,27 @@ export default function NewSaleEntry({ activeSalesman }) {
     const newGrossBill = validPetis * petiRate + looseAmount;
     const newDeduction = Math.round(newBroken * singleEggRate);
     const newTotal = Math.max(0, newGrossBill - newDeduction);
+    const newGrandTotal = newTotal + previousUdhaarTotal;
 
     setForm((prev) => ({
       ...prev,
       petis: String(validPetis),
-      paidAmount: paymentPreset === "full" ? String(newTotal) : paymentPreset === "credit" ? "0" : prev.paidAmount,
+      paidAmount:
+        paymentPreset === "full"
+          ? String(newGrandTotal)
+          : paymentPreset === "current"
+          ? String(newTotal)
+          : paymentPreset === "credit"
+          ? "0"
+          : prev.paidAmount,
     }));
   };
 
   const handlePresetSelect = (preset) => {
     setPaymentPreset(preset);
     if (preset === "full") {
+      setForm((prev) => ({ ...prev, paidAmount: String(grandTotal), paymentMode: "Cash" }));
+    } else if (preset === "current") {
       setForm((prev) => ({ ...prev, paidAmount: String(totalBill), paymentMode: "Cash" }));
     } else if (preset === "credit") {
       setForm((prev) => ({ ...prev, paidAmount: "0", paymentMode: "Credit / Khata" }));
@@ -119,12 +255,14 @@ export default function NewSaleEntry({ activeSalesman }) {
 
     setIsSubmitting(true);
     try {
-      const orderId = `INV-${9000 + salesOrders.length + 1}`;
+      // Serial numbers start from 0001
+      const orderId = String(salesOrders.length + 1).padStart(4, "0");
       const code = (form.shopName ? form.shopName.slice(0, 2) : "SP").toUpperCase();
       const status = remainingBalance <= 0 ? "Full Paid" : paid === 0 ? "Credit / Unpaid" : "Partial";
 
       const newOrder = {
         id: orderId,
+        invoiceNo: orderId,
         code: code,
         salesmanId: activeSalesman?.id || "SM-1",
         salesmanName: activeSalesman?.name || "Muhammad Usman",
@@ -143,7 +281,18 @@ export default function NewSaleEntry({ activeSalesman }) {
         ratePerPeti: petiRate,
         ratePerEgg: singleEggRate.toFixed(2),
         brokenDeduction: brokenDeduction,
-        totalAmount: totalBill,
+        totalAmount: grandTotal,
+        currentSaleAmount: totalBill,
+        previousBalance: previousUdhaarTotal,
+        grandTotal: grandTotal,
+        previousOrdersUdhaar: pendingUdhaar.orders.map((o) => ({
+          invoiceNo: o.invoiceNo,
+          date: o.date,
+          remainingBalance: o.remainingBalance,
+          totalAmount: o.totalAmount,
+          paidAmount: o.paidAmount,
+        })),
+        pendingOrderInvoices: pendingUdhaar.orders.map((o) => o.invoiceNo),
         paidAmount: paid,
         remainingBalance: remainingBalance,
         paymentStatus: status,
@@ -172,6 +321,14 @@ export default function NewSaleEntry({ activeSalesman }) {
         paidAmount: "7300",
       });
       setPaymentPreset("full");
+      setPendingUdhaar({
+        isLoading: false,
+        hasPending: false,
+        total: 0,
+        orders: [],
+        customerDetails: null,
+      });
+      setShowUdhaarDetails(false);
     } catch (err) {
       console.error("Order submit error:", err);
       alert("Error saving sale order. Please try again.");
@@ -255,17 +412,30 @@ export default function NewSaleEntry({ activeSalesman }) {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  WhatsApp / Phone *
-                </label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="03001234567"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className="w-full text-xs font-medium bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-700 focus:bg-white"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    WhatsApp / Phone *
+                  </label>
+                  {pendingUdhaar.hasPending && (
+                    <span className="text-[10px] font-black text-red-600 bg-red-100 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                      ⚠️ Udhaar: Rs. {pendingUdhaar.total.toLocaleString()}
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    required
+                    placeholder="03001234567"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    onBlur={() => checkPhoneUdhaar(form.phone)}
+                    className="w-full text-xs font-medium bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-700 focus:bg-white"
+                  />
+                  {pendingUdhaar.isLoading && (
+                    <Loader2 className="w-4 h-4 animate-spin text-teal-700 absolute right-3 top-1/2 -translate-y-1/2" />
+                  )}
+                </div>
               </div>
             </div>
 
@@ -336,18 +506,105 @@ export default function NewSaleEntry({ activeSalesman }) {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">
-                Shopkeeper WhatsApp Number (for receipt) *
-              </label>
-              <input
-                type="tel"
-                required
-                placeholder="03001234567"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="w-full text-xs font-medium bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-700"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Shopkeeper WhatsApp Number (for receipt) *
+                </label>
+                {pendingUdhaar.hasPending && (
+                  <span className="text-[10px] font-black text-red-600 bg-red-100 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                    ⚠️ Udhaar: Rs. {pendingUdhaar.total.toLocaleString()}
+                  </span>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  type="tel"
+                  required
+                  placeholder="03001234567"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  onBlur={() => checkPhoneUdhaar(form.phone)}
+                  className="w-full text-xs font-medium bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-700"
+                />
+                {pendingUdhaar.isLoading && (
+                  <Loader2 className="w-4 h-4 animate-spin text-teal-700 absolute right-3 top-1/2 -translate-y-1/2" />
+                )}
+              </div>
             </div>
+          </div>
+        )}
+
+        {/* PENDING UDHAAR AUTO-ALERT & BREAKDOWN */}
+        {pendingUdhaar.isLoading && (
+          <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs flex items-center gap-2 text-amber-800">
+            <Loader2 className="w-4 h-4 animate-spin text-amber-600 shrink-0" />
+            <span className="font-semibold">Checking shop previous udhaar records...</span>
+          </div>
+        )}
+
+        {pendingUdhaar.hasPending && (
+          <div className="mt-3 rounded-2xl bg-amber-50/70 border border-amber-200/90 p-3.5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-300 text-amber-900 flex items-center justify-center shrink-0">
+                  <History className="w-4 h-4 text-amber-800" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-800">
+                      Previous Udhaar (Peechla Baqaya)
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-950 border border-amber-300">
+                      {pendingUdhaar.orders.length} Unpaid {pendingUdhaar.orders.length > 1 ? "Invoices" : "Invoice"}
+                    </span>
+                  </div>
+                  <p className="text-sm font-black text-red-600 mt-0.5">
+                    Rs. {pendingUdhaar.total.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowUdhaarDetails((prev) => !prev)}
+                className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-[11px] font-bold flex items-center gap-1.5 shadow-xs transition-colors shrink-0 cursor-pointer"
+              >
+                <span>{showUdhaarDetails ? "Hide Details" : "View Invoices"}</span>
+                {showUdhaarDetails ? <ChevronUp className="w-3.5 h-3.5 text-slate-500" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />}
+              </button>
+            </div>
+
+            {/* EXPANDED PENDING INVOICES LIST */}
+            {showUdhaarDetails && (
+              <div className="pt-2.5 border-t border-amber-200/70 space-y-2">
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
+                  {pendingUdhaar.orders.map((ord) => (
+                    <div
+                      key={ord.id}
+                      className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between text-xs hover:border-amber-300 transition-colors"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">
+                            #{ord.invoiceNo || ord.id}
+                          </span>
+                          <span className="text-[11px] text-slate-500">{ord.date}</span>
+                        </div>
+                        <div className="text-[11px] text-slate-600">
+                          {ord.petis} Petis • Bill: Rs. {Number(ord.totalAmount).toLocaleString()} • Paid: Rs. {Number(ord.paidAmount).toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 font-semibold block uppercase tracking-wider">Due Udhaar</span>
+                        <strong className="text-red-600 font-black text-xs">
+                          Rs. {Number(ord.remainingBalance).toLocaleString()}
+                        </strong>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -530,7 +787,8 @@ export default function NewSaleEntry({ activeSalesman }) {
         </div>
 
         {/* Live Calculation Preview Strip */}
-        <div className="bg-white p-3 rounded-xl border border-amber-300 text-xs space-y-1.5 shadow-xs">
+        {/* Live Calculation Preview Strip */}
+        <div className="bg-white p-3.5 rounded-xl border border-amber-300 text-xs space-y-1.5 shadow-xs">
           <div className="flex justify-between text-slate-600">
             <span>Gross Eggs:</span>
             <strong className="text-slate-900">{grossEggs.toLocaleString()} Eggs</strong>
@@ -545,10 +803,30 @@ export default function NewSaleEntry({ activeSalesman }) {
             <span>Net Billable Eggs:</span>
             <span>{netEggs.toLocaleString()} Eggs</span>
           </div>
+
           <div className="flex items-baseline justify-between pt-1 border-t border-amber-200">
-            <span className="font-extrabold text-slate-900">Total Net Bill:</span>
-            <strong className="text-base font-black text-slate-950">
+            <span className="font-bold text-slate-700">Today's Sale Bill:</span>
+            <strong className="text-sm font-black text-slate-900">
               Rs. {totalBill.toLocaleString()}
+            </strong>
+          </div>
+
+          {pendingUdhaar.hasPending && (
+            <div className="flex items-baseline justify-between text-red-700 font-extrabold pt-0.5">
+              <span className="flex items-center gap-1">
+                <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                Previous Pending Udhaar:
+              </span>
+              <span className="text-sm font-black">
+                + Rs. {pendingUdhaar.total.toLocaleString()}
+              </span>
+            </div>
+          )}
+
+          <div className="flex items-baseline justify-between pt-1.5 border-t-2 border-slate-900">
+            <span className="font-black text-slate-950 text-sm">Kul Wasooli (Grand Total):</span>
+            <strong className="text-base font-black text-emerald-800">
+              Rs. {grandTotal.toLocaleString()}
             </strong>
           </div>
         </div>
@@ -558,34 +836,56 @@ export default function NewSaleEntry({ activeSalesman }) {
           STEP 3: PAYMENT & KHATA (UDHAAR)
           ========================================================================= */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs space-y-3.5">
-        <div className="flex items-center gap-2">
-          <span className="w-6 h-6 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center">
-            3
-          </span>
-          <h3 className="font-extrabold text-sm text-slate-900">
-            Payment & Udhaar (Khata)
-          </h3>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center">
+              3
+            </span>
+            <h3 className="font-extrabold text-sm text-slate-900">
+              Payment & Udhaar (Khata)
+            </h3>
+          </div>
+          {pendingUdhaar.hasPending && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-red-100 text-red-800 border border-red-300">
+              Includes Udhaar
+            </span>
+          )}
         </div>
 
-        {/* 3 Quick-Tap Shortcut Buttons */}
-        <div className="grid grid-cols-3 gap-2">
+        {/* Quick-Tap Shortcut Buttons */}
+        <div className={`grid gap-2 ${pendingUdhaar.hasPending ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
           <button
             type="button"
             onClick={() => handlePresetSelect("full")}
-            className={`py-2 px-2 rounded-xl text-xs font-black flex flex-col items-center gap-1 border transition-all ${
+            className={`py-2 px-2 rounded-xl text-xs font-black flex flex-col items-center gap-1 border transition-all cursor-pointer ${
               paymentPreset === "full"
                 ? "bg-teal-800 text-white border-teal-800 shadow-xs"
                 : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
             }`}
           >
-            <span>Full Cash</span>
-            <span className="text-[10px] font-bold text-teal-200">Rs. {totalBill.toLocaleString()}</span>
+            <span>Full Wasooli</span>
+            <span className="text-[10px] font-bold text-teal-200">Rs. {grandTotal.toLocaleString()}</span>
           </button>
+
+          {pendingUdhaar.hasPending && (
+            <button
+              type="button"
+              onClick={() => handlePresetSelect("current")}
+              className={`py-2 px-2 rounded-xl text-xs font-black flex flex-col items-center gap-1 border transition-all cursor-pointer ${
+                paymentPreset === "current"
+                  ? "bg-blue-700 text-white border-blue-700 shadow-xs"
+                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+              }`}
+            >
+              <span>Today Bill Only</span>
+              <span className="text-[10px] font-bold text-blue-200">Rs. {totalBill.toLocaleString()}</span>
+            </button>
+          )}
 
           <button
             type="button"
             onClick={() => handlePresetSelect("credit")}
-            className={`py-2 px-2 rounded-xl text-xs font-black flex flex-col items-center gap-1 border transition-all ${
+            className={`py-2 px-2 rounded-xl text-xs font-black flex flex-col items-center gap-1 border transition-all cursor-pointer ${
               paymentPreset === "credit"
                 ? "bg-red-700 text-white border-red-700 shadow-xs"
                 : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
@@ -598,7 +898,7 @@ export default function NewSaleEntry({ activeSalesman }) {
           <button
             type="button"
             onClick={() => handlePresetSelect("custom")}
-            className={`py-2 px-2 rounded-xl text-xs font-black flex flex-col items-center gap-1 border transition-all ${
+            className={`py-2 px-2 rounded-xl text-xs font-black flex flex-col items-center gap-1 border transition-all cursor-pointer ${
               paymentPreset === "custom"
                 ? "bg-amber-400 text-slate-950 border-amber-400 shadow-xs"
                 : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
@@ -612,13 +912,16 @@ export default function NewSaleEntry({ activeSalesman }) {
         {/* Custom Payment Amount Input (visible when Partial Pay is selected) */}
         {paymentPreset === "custom" && (
           <div className="space-y-1.5 p-3 rounded-xl bg-amber-50 border border-amber-200">
-            <label className="text-xs font-bold text-slate-700 block">
-              Enter Cash Amount Received (Rs)
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-700 block">
+                Enter Cash Amount Received (Rs)
+              </label>
+              <span className="text-[10px] text-slate-500">Max: Rs. {grandTotal.toLocaleString()}</span>
+            </div>
             <input
               type="number"
               min="0"
-              max={totalBill}
+              max={grandTotal}
               placeholder="0"
               value={form.paidAmount}
               onChange={(e) => setForm({ ...form, paidAmount: e.target.value })}
@@ -629,7 +932,7 @@ export default function NewSaleEntry({ activeSalesman }) {
         )}
 
         {/* Live Balance / Udhaar Status Card */}
-        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
           <div>
             <span className="text-[11px] text-slate-500 block font-semibold">
               Remaining Udhaar (Baqaya):

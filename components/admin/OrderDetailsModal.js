@@ -18,11 +18,12 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  FileText
+  FileText,
+  Edit3
 } from "lucide-react";
 
-export default function OrderDetailsModal({ order, isOpen, onClose }) {
-  const { openReceipt, fetchOrderDetails, EGGS_PER_PETI } = useApp();
+export default function OrderDetailsModal({ order, isOpen, onClose, onEditOrder }) {
+  const { openReceipt, fetchOrderDetails, EGGS_PER_PETI, currentUser } = useApp();
 
   const [detailedOrder, setDetailedOrder] = useState(order);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
@@ -272,16 +273,32 @@ export default function OrderDetailsModal({ order, isOpen, onClose }) {
             )}
 
             <div className="pt-2 border-t border-slate-200 space-y-1">
-              <div className="flex justify-between text-sm font-black text-slate-900">
-                <span>Total Bill Amount:</span>
-                <span className="text-base text-slate-950">
+              <div className="flex justify-between text-xs font-bold text-slate-700">
+                <span>Today's Sale Bill:</span>
+                <span className="text-slate-900">
                   Rs. {Number(current.totalAmount || 0).toLocaleString()}
                 </span>
               </div>
+
+              {Number(current.previousBalance) > 0 && (
+                <div className="flex justify-between text-xs font-bold text-red-700">
+                  <span>+ Previous Udhaar (Peechla):</span>
+                  <span>Rs. {Number(current.previousBalance).toLocaleString()}</span>
+                </div>
+              )}
+
+              <div className="flex justify-between text-sm font-black text-slate-900 pt-0.5 border-t border-slate-200">
+                <span>Kul Wasooli (Grand Total):</span>
+                <span className="text-base text-slate-950">
+                  Rs. {Number(current.grandTotal || (Number(current.totalAmount || 0) + Number(current.previousBalance || 0))).toLocaleString()}
+                </span>
+              </div>
+
               <div className="flex justify-between text-xs font-bold text-emerald-700">
                 <span>Cash Paid / Wasool:</span>
                 <span>Rs. {Number(current.paidAmount || 0).toLocaleString()}</span>
               </div>
+
               <div className="flex justify-between text-xs font-black text-red-600 pt-1 border-t border-slate-100">
                 <span>Remaining Balance (Udhaar):</span>
                 <span>Rs. {Number(current.remainingBalance || 0).toLocaleString()}</span>
@@ -302,7 +319,20 @@ export default function OrderDetailsModal({ order, isOpen, onClose }) {
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 grid grid-cols-2 gap-2">
+        <div className={`p-4 bg-slate-50 border-t border-slate-200 grid ${currentUser?.role === "admin" ? "grid-cols-3" : "grid-cols-2"} gap-2`}>
+          {currentUser?.role === "admin" && (
+            <button
+              onClick={() => {
+                onClose();
+                if (onEditOrder) onEditOrder(current);
+              }}
+              className="py-2.5 px-3 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+            >
+              <Edit3 className="w-4 h-4 text-teal-200" />
+              <span>Edit Sale</span>
+            </button>
+          )}
+
           <button
             onClick={() => {
               onClose();
@@ -311,7 +341,7 @@ export default function OrderDetailsModal({ order, isOpen, onClose }) {
             className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors shadow-sm cursor-pointer"
           >
             <Receipt className="w-4 h-4" />
-            <span>View Thermal Receipt</span>
+            <span>Thermal Slip</span>
           </button>
 
           <a
@@ -321,7 +351,7 @@ export default function OrderDetailsModal({ order, isOpen, onClose }) {
             className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors shadow-sm cursor-pointer"
           >
             <Share2 className="w-4 h-4" />
-            <span>Send WhatsApp Slip</span>
+            <span>WhatsApp</span>
           </a>
         </div>
       </div>

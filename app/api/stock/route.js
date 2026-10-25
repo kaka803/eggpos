@@ -53,7 +53,7 @@ export async function POST(req) {
     }
 
     const count = await StockInward.countDocuments();
-    const batchId = `STK-${1000 + count + 1}`;
+    const batchId = `STK-${String(count + 1).padStart(4, "0")}`;
 
     const petis = Number(data.petis) || 0;
     const ratePerPeti = Number(data.ratePerPeti) || 0;
