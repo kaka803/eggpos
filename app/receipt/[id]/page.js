@@ -66,7 +66,7 @@ function AutoDownloadReceiptContent() {
           </div>
           <h1 className="text-base font-extrabold text-slate-900">Receipt Not Found</h1>
           <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
-            {errorMessage || `Invoice #${id} could not be loaded.`}
+            {errorMessage || "Receipt could not be loaded."}
           </p>
         </div>
       </div>
@@ -85,7 +85,7 @@ function AutoDownloadReceiptContent() {
               Al-Barkat Egg Wholesale
             </h1>
             <p className="text-xs text-amber-600 font-bold mt-1">
-              Preparing Receipt #{id} PDF...
+              Preparing Receipt PDF...
             </p>
             <p className="text-[12px] text-slate-500 mt-0.5">
               File download shuru ho rahi hai...
@@ -100,7 +100,7 @@ function AutoDownloadReceiptContent() {
               Al-Barkat Egg Wholesale
             </h1>
             <p className="text-xs text-emerald-700 font-bold mt-1">
-              Receipt #{id} PDF Downloaded Successfully
+              Receipt #{order?.invoiceNo || ""} PDF Downloaded Successfully
             </p>
             <p className="text-[12px] text-slate-500 mt-0.5">
               Slip aap k device mai save ho gayi hai.
