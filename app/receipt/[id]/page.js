@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useParams } from "next/navigation";
 import { Download, Printer, ArrowLeft, Loader2, Store, CheckCircle2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
@@ -8,7 +8,7 @@ import { downloadThermalReceiptPDF } from "@/lib/thermalPdf";
 
 const EGGS_PER_PETI = 360;
 
-export default function PublicReceiptPage() {
+function ReceiptContent() {
   const params = useParams();
   const id = params?.id;
 
@@ -320,5 +320,20 @@ export default function PublicReceiptPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function PublicReceiptPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-white">
+          <Loader2 className="w-8 h-8 animate-spin text-amber-400 mb-3" />
+          <p className="text-sm font-bold text-slate-300">Loading Official Thermal Receipt...</p>
+        </div>
+      }
+    >
+      <ReceiptContent />
+    </Suspense>
   );
 }
