@@ -3,6 +3,7 @@
 import React from "react";
 import { useApp } from "@/context/AppContext";
 import { Receipt, Share2, CheckCircle2, Loader2 } from "lucide-react";
+import { generateWhatsAppInvoiceMessage, getWhatsAppPhoneUrl } from "@/lib/whatsappTemplate";
 
 export default function TodayDeliveries({ activeSalesman }) {
   const { salesOrders, openReceipt, isOrdersLoading, EGGS_PER_PETI } = useApp();
@@ -12,50 +13,9 @@ export default function TodayDeliveries({ activeSalesman }) {
   );
 
   const getWhatsAppLink = (receipt) => {
-    const rawPhone = (receipt.phone || "").replace(/[^0-9]/g, "");
-    const formattedPhone = rawPhone.startsWith("0")
-      ? `92${rawPhone.slice(1)}`
-      : rawPhone.startsWith("92")
-      ? rawPhone
-      : `92${rawPhone}`;
-
-    const currentSale = Number(receipt.currentSaleAmount || (Number(receipt.totalAmount) - (Number(receipt.previousBalance) || 0)));
-    const prevBal = Number(receipt.previousBalance) || 0;
-    const grandTotal = Number(receipt.grandTotal || receipt.totalAmount);
-
-    let billDetails = "";
-    if (prevBal > 0) {
-      billDetails =
-        `💵 *Aaj Ka Egg Bill:* Rs. ${currentSale.toLocaleString()}\n` +
-        `⏳ *Peechla Udhaar:* + Rs. ${prevBal.toLocaleString()}\n` +
-        `💰 *Kul Total Bill:* Rs. ${grandTotal.toLocaleString()}\n`;
-    } else {
-      billDetails = `💰 *Total Bill:* Rs. ${grandTotal.toLocaleString()}\n`;
-    }
-
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const receiptLink = origin ? `${origin}/receipt/${receipt.invoiceNo || receipt.id}` : "";
-
-    const text =
-      `*AL-BARKAT EGG WHOLESALE WAREHOUSE*\n` +
-      `🧾 *SALE INVOICE #${receipt.id}*\n` +
-      `------------------------------------\n` +
-      `🏪 *Shop:* ${receipt.shopName}\n` +
-      `👤 *Customer:* ${receipt.shopkeeperName}\n` +
-      `🛵 *Salesman:* ${receipt.salesmanName}\n` +
-      `📅 *Date:* ${receipt.date} at ${receipt.time}\n` +
-      `------------------------------------\n` +
-      `📦 *Quantity:* ${receipt.petis} Petis (${(receipt.netEggs || receipt.totalEggs).toLocaleString()} Eggs)\n` +
-      (Number(receipt.brokenEggs) > 0 ? `⚠️ *Toote Anday:* -${receipt.brokenEggs} Eggs\n` : "") +
-      `💵 *Rate per Peti:* Rs. ${Number(receipt.ratePerPeti).toLocaleString()}\n` +
-      billDetails +
-      `✅ *Paid (Wasool):* Rs. ${Number(receipt.paidAmount).toLocaleString()}\n` +
-      `⚠️ *Remaining (Baqaya):* Rs. ${Number(receipt.remainingBalance).toLocaleString()}\n` +
-      `------------------------------------\n` +
-      (receiptLink ? `📄 *View / Download Thermal Slip (PDF):*\n👉 ${receiptLink}\n------------------------------------\n` : "") +
-      `Thank you for your business!`;
-
-    return `https://wa.me/${formattedPhone}?text=${encodeURIComponent(text)}`;
+    const message = generateWhatsAppInvoiceMessage(receipt, origin);
+    return getWhatsAppPhoneUrl(receipt.phone, message);
   };
 
   return (

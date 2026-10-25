@@ -3,6 +3,7 @@
 import React, { useState, useRef } from "react";
 import { useApp } from "@/context/AppContext";
 import { Share2, Download, Loader2, X, MessageCircle } from "lucide-react";
+import { generateWhatsAppInvoiceMessage, getWhatsAppPhoneUrl } from "@/lib/whatsappTemplate";
 
 export default function ReceiptModal() {
   const { activeReceipt, showReceiptModal, closeReceipt, EGGS_PER_PETI } = useApp();
@@ -54,53 +55,10 @@ export default function ReceiptModal() {
   // Direct WhatsApp chat to specific customer number with PDF download link
   const handleDirectWhatsApp = () => {
     if (!activeReceipt) return;
-    const rawPhone = (activeReceipt.phone || "").replace(/[^0-9]/g, "");
-    const formattedPhone = rawPhone.startsWith("0")
-      ? `92${rawPhone.slice(1)}`
-      : rawPhone.startsWith("92")
-      ? rawPhone
-      : `92${rawPhone}`;
-
-    const currentSale = Number(
-      activeReceipt.currentSaleAmount ||
-      (Number(activeReceipt.totalAmount) - (Number(activeReceipt.previousBalance) || 0))
-    );
-    const prevBal = Number(activeReceipt.previousBalance) || 0;
-    const grandTotal = Number(activeReceipt.grandTotal || activeReceipt.totalAmount);
-
-    let billDetails = "";
-    if (prevBal > 0) {
-      billDetails =
-        `💵 *Aaj Ka Egg Bill:* Rs. ${currentSale.toLocaleString()}\n` +
-        `⏳ *Peechla Baqaya Udhaar:* + Rs. ${prevBal.toLocaleString()}\n` +
-        `💰 *Kul Total Bill:* Rs. ${grandTotal.toLocaleString()}\n`;
-    } else {
-      billDetails = `💰 *Total Bill:* Rs. ${grandTotal.toLocaleString()}\n`;
-    }
-
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const receiptLink = origin ? `${origin}/receipt/${activeReceipt.invoiceNo || activeReceipt.id}` : "";
-
-    const text =
-      `*AL-BARKAT EGG WHOLESALE*\n` +
-      `🧾 *SALE INVOICE #${activeReceipt.invoiceNo || activeReceipt.id}*\n` +
-      `----------------------------------------\n` +
-      `🏪 *Dukan:* ${activeReceipt.shopName}\n` +
-      `👤 *Customer:* ${activeReceipt.shopkeeperName || "Shopkeeper"}\n` +
-      `🛵 *Salesman:* ${activeReceipt.salesmanName || "Salesman"}\n` +
-      `📅 *Date:* ${activeReceipt.date} at ${activeReceipt.time}\n` +
-      `----------------------------------------\n` +
-      `📦 *Anday Sold:* ${activeReceipt.petis} Petis (${(activeReceipt.netEggs || activeReceipt.totalEggs || 0).toLocaleString()} Eggs)\n` +
-      (Number(activeReceipt.brokenEggs) > 0 ? `⚠️ *Toote Anday:* -${activeReceipt.brokenEggs} Eggs\n` : "") +
-      `💵 *Rate per Peti:* Rs. ${Number(activeReceipt.ratePerPeti).toLocaleString()}\n` +
-      billDetails +
-      `✅ *Paid (Wasool):* Rs. ${Number(activeReceipt.paidAmount).toLocaleString()}\n` +
-      `⚠️ *Net Remaining (Baqaya):* Rs. ${Number(activeReceipt.remainingBalance).toLocaleString()}\n` +
-      `----------------------------------------\n` +
-      (receiptLink ? `📄 *Download / View Thermal Slip (PDF):*\n👉 ${receiptLink}\n----------------------------------------\n` : "") +
-      `Shukriya! Tijarat Me Barkat Ki Dua.`;
-
-    window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(text)}`, "_blank");
+    const message = generateWhatsAppInvoiceMessage(activeReceipt, origin);
+    const url = getWhatsAppPhoneUrl(activeReceipt.phone, message);
+    window.open(url, "_blank");
   };
 
   const grossEggs = activeReceipt.grossEggs || activeReceipt.petis * EGGS_PER_PETI + (activeReceipt.looseEggs || 0);

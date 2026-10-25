@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
+import { generateWhatsAppInvoiceMessage, getWhatsAppPhoneUrl } from "@/lib/whatsappTemplate";
 import {
   X,
   Receipt,
@@ -68,24 +69,9 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEditOrder 
   const isCompleted = current.paymentStatus === "Full Paid";
 
   const getWhatsAppLink = (receipt) => {
-    const rawPhone = (receipt.phone || "").replace(/[^0-9]/g, "");
-    const formattedPhone = rawPhone.startsWith("0")
-      ? `92${rawPhone.slice(1)}`
-      : rawPhone.startsWith("92")
-      ? rawPhone
-      : `92${rawPhone}`;
-
-    const text =
-      `*AL-BARKAT EGG WHOLESALE*\n` +
-      `🧾 *SALE INVOICE #${receipt.id}*\n` +
-      `🏪 *Shop:* ${receipt.shopName}\n` +
-      `📦 *Petis:* ${receipt.petis} Petis (${(receipt.netEggs || receipt.totalEggs || 0).toLocaleString()} Eggs)\n` +
-      `💰 *Total Bill:* Rs. ${Number(receipt.totalAmount).toLocaleString()}\n` +
-      `💵 *Paid:* Rs. ${Number(receipt.paidAmount).toLocaleString()}\n` +
-      `⚠️ *Remaining Balance:* Rs. ${Number(receipt.remainingBalance).toLocaleString()}\n` +
-      `Thank you for your business!`;
-
-    return `https://wa.me/${formattedPhone}?text=${encodeURIComponent(text)}`;
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const message = generateWhatsAppInvoiceMessage(receipt, origin);
+    return getWhatsAppPhoneUrl(receipt.phone, message);
   };
 
   return (

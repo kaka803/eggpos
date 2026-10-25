@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useApp } from "@/context/AppContext";
+import { generateWhatsAppInvoiceMessage, getWhatsAppPhoneUrl } from "@/lib/whatsappTemplate";
 import {
   Search,
   Share2,
@@ -47,47 +48,9 @@ export default function SalesmanHistory({ activeSalesman }) {
   });
 
   const getWhatsAppLink = (receipt) => {
-    const rawPhone = (receipt.phone || "").replace(/[^0-9]/g, "");
-    const formattedPhone = rawPhone.startsWith("0")
-      ? `92${rawPhone.slice(1)}`
-      : rawPhone.startsWith("92")
-      ? rawPhone
-      : `92${rawPhone}`;
-
-    const currentSale = Number(receipt.currentSaleAmount || (Number(receipt.totalAmount) - (Number(receipt.previousBalance) || 0)));
-    const prevBal = Number(receipt.previousBalance) || 0;
-    const grandTotal = Number(receipt.grandTotal || receipt.totalAmount);
-
-    let billBreakdown = "";
-    if (prevBal > 0) {
-      billBreakdown =
-        `💵 *Aaj Ka Bill:* Rs. ${currentSale.toLocaleString()}\n` +
-        `⏳ *Peechla Udhaar:* + Rs. ${prevBal.toLocaleString()}\n` +
-        `💰 *Kul Total Bill:* Rs. ${grandTotal.toLocaleString()}\n`;
-    } else {
-      billBreakdown = `💰 *Total Bill:* Rs. ${grandTotal.toLocaleString()}\n`;
-    }
-
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const receiptLink = origin ? `${origin}/receipt/${receipt.invoiceNo || receipt.id}` : "";
-
-    const text =
-      `*AL-BARKAT EGG WHOLESALE*\n` +
-      `🧾 *SALE INVOICE #${receipt.id}*\n` +
-      `------------------------------------\n` +
-      `🏪 *Shop:* ${receipt.shopName}\n` +
-      `👤 *Customer:* ${receipt.shopkeeperName}\n` +
-      `📅 *Date:* ${receipt.date} at ${receipt.time}\n` +
-      `📦 *Petis:* ${receipt.petis} Petis (${(receipt.netEggs || receipt.totalEggs).toLocaleString()} Eggs)\n` +
-      (receipt.brokenEggs > 0 ? `⚠️ *Broken Eggs:* -${receipt.brokenEggs} Eggs\n` : "") +
-      billBreakdown +
-      `✅ *Paid (Wasool):* Rs. ${Number(receipt.paidAmount).toLocaleString()}\n` +
-      `⚠️ *Remaining (Baqaya Udhaar):* Rs. ${Number(receipt.remainingBalance).toLocaleString()}\n` +
-      `------------------------------------\n` +
-      (receiptLink ? `📄 *View / Download Thermal Slip (PDF):*\n👉 ${receiptLink}\n------------------------------------\n` : "") +
-      `Thank you for your business!`;
-
-    return `https://wa.me/${formattedPhone}?text=${encodeURIComponent(text)}`;
+    const message = generateWhatsAppInvoiceMessage(receipt, origin);
+    return getWhatsAppPhoneUrl(receipt.phone, message);
   };
 
   return (
