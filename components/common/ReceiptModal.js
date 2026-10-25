@@ -51,7 +51,7 @@ export default function ReceiptModal() {
     }
   };
 
-  // Direct WhatsApp chat to specific customer number
+  // Direct WhatsApp chat to specific customer number with PDF download link
   const handleDirectWhatsApp = () => {
     if (!activeReceipt) return;
     const rawPhone = (activeReceipt.phone || "").replace(/[^0-9]/g, "");
@@ -72,7 +72,7 @@ export default function ReceiptModal() {
     if (prevBal > 0) {
       billDetails =
         `💵 *Aaj Ka Egg Bill:* Rs. ${currentSale.toLocaleString()}\n` +
-        `⏳ *Peechla Udhaar:* + Rs. ${prevBal.toLocaleString()}\n` +
+        `⏳ *Peechla Baqaya Udhaar:* + Rs. ${prevBal.toLocaleString()}\n` +
         `💰 *Kul Total Bill:* Rs. ${grandTotal.toLocaleString()}\n`;
     } else {
       billDetails = `💰 *Total Bill:* Rs. ${grandTotal.toLocaleString()}\n`;
@@ -82,30 +82,23 @@ export default function ReceiptModal() {
     const receiptLink = origin ? `${origin}/receipt/${activeReceipt.invoiceNo || activeReceipt.id}` : "";
 
     const text =
-      `*AL-BARKAT EGG WHOLESALE WAREHOUSE*\n` +
-      `🧾 *SALE INVOICE #${activeReceipt.id}*\n` +
-      `------------------------------------\n` +
-      `🏪 *Shop:* ${activeReceipt.shopName}\n` +
-      `👤 *Customer:* ${activeReceipt.shopkeeperName}\n` +
-      `🛵 *Salesman:* ${activeReceipt.salesmanName}\n` +
+      `*AL-BARKAT EGG WHOLESALE*\n` +
+      `🧾 *SALE INVOICE #${activeReceipt.invoiceNo || activeReceipt.id}*\n` +
+      `----------------------------------------\n` +
+      `🏪 *Dukan:* ${activeReceipt.shopName}\n` +
+      `👤 *Customer:* ${activeReceipt.shopkeeperName || "Shopkeeper"}\n` +
+      `🛵 *Salesman:* ${activeReceipt.salesmanName || "Salesman"}\n` +
       `📅 *Date:* ${activeReceipt.date} at ${activeReceipt.time}\n` +
-      `------------------------------------\n` +
-      `📦 *Quantity:* ${activeReceipt.petis} Petis (${(activeReceipt.netEggs || activeReceipt.totalEggs || 0).toLocaleString()} Eggs)\n` +
+      `----------------------------------------\n` +
+      `📦 *Anday Sold:* ${activeReceipt.petis} Petis (${(activeReceipt.netEggs || activeReceipt.totalEggs || 0).toLocaleString()} Eggs)\n` +
       (Number(activeReceipt.brokenEggs) > 0 ? `⚠️ *Toote Anday:* -${activeReceipt.brokenEggs} Eggs\n` : "") +
       `💵 *Rate per Peti:* Rs. ${Number(activeReceipt.ratePerPeti).toLocaleString()}\n` +
       billDetails +
       `✅ *Paid (Wasool):* Rs. ${Number(activeReceipt.paidAmount).toLocaleString()}\n` +
-      `⚠️ *Remaining (Baqaya):* Rs. ${Number(activeReceipt.remainingBalance).toLocaleString()}\n` +
-      `------------------------------------\n` +
-      (receiptLink ? `📄 *View / Download Thermal Slip (PDF):*\n👉 ${receiptLink}\n------------------------------------\n` : "") +
-      `Thank you for your business!`;
-
-    // Also download PDF slip so it's ready in recent downloads if they want to attach it
-    try {
-      import("@/lib/thermalPdf").then(({ downloadThermalReceiptPDF }) => {
-        downloadThermalReceiptPDF(activeReceipt, EGGS_PER_PETI);
-      });
-    } catch {}
+      `⚠️ *Net Remaining (Baqaya):* Rs. ${Number(activeReceipt.remainingBalance).toLocaleString()}\n` +
+      `----------------------------------------\n` +
+      (receiptLink ? `📄 *Download / View Thermal Slip (PDF):*\n👉 ${receiptLink}\n----------------------------------------\n` : "") +
+      `Shukriya! Tijarat Me Barkat Ki Dua.`;
 
     window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(text)}`, "_blank");
   };
@@ -371,21 +364,39 @@ export default function ReceiptModal() {
 
         {/* Modal Action Buttons */}
         <div className="bg-slate-900 p-3 rounded-b-2xl space-y-2 border-t border-slate-800 mt-2">
-          {/* Main Direct WhatsApp button */}
+          {/* Main Direct WhatsApp button with direct PDF download link */}
           <button
             onClick={handleDirectWhatsApp}
-            className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center justify-center gap-2 shadow-md shadow-emerald-950/30 transition-all font-sans cursor-pointer"
+            className="w-full py-3 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 transition-all font-sans cursor-pointer"
           >
-            <MessageCircle className="w-4 h-4 text-emerald-100" />
-            <span>Open WhatsApp Chat ({activeReceipt.phone || "Customer"})</span>
+            <MessageCircle className="w-4 h-4 text-white" />
+            <span>Send WhatsApp Slip to {activeReceipt.phone || "Customer"}</span>
           </button>
 
           <div className="grid grid-cols-2 gap-2">
             <button
+              onClick={handleDownloadPDF}
+              disabled={isGeneratingPdf}
+              className="py-2.5 px-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 text-xs font-black flex items-center justify-center gap-1.5 transition-colors font-sans cursor-pointer shadow-xs"
+            >
+              {isGeneratingPdf ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                  <span>Creating PDF...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download PDF Slip</span>
+                </>
+              )}
+            </button>
+
+            <button
               onClick={handleWhatsAppShare}
               disabled={isSharingPdf}
-              className="py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 disabled:opacity-50 text-slate-200 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors font-sans cursor-pointer"
-              title="Share PDF Document directly"
+              className="py-2.5 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 disabled:opacity-50 text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors font-sans cursor-pointer"
+              title="Attach PDF directly in WhatsApp share"
             >
               {isSharingPdf ? (
                 <>
@@ -396,24 +407,6 @@ export default function ReceiptModal() {
                 <>
                   <Share2 className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Share PDF File</span>
-                </>
-              )}
-            </button>
-
-            <button
-              onClick={handleDownloadPDF}
-              disabled={isGeneratingPdf}
-              className="py-2 px-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 text-[11px] font-black flex items-center justify-center gap-1.5 transition-colors font-sans cursor-pointer"
-            >
-              {isGeneratingPdf ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-950" />
-                  <span>Creating...</span>
-                </>
-              ) : (
-                <>
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download Slip</span>
                 </>
               )}
             </button>
