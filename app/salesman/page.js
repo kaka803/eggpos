@@ -6,6 +6,7 @@ import Header from "@/components/common/Header";
 import NewSaleEntry from "@/components/salesman/NewSaleEntry";
 import SalesmanHistory from "@/components/salesman/SalesmanHistory";
 import TodayDeliveries from "@/components/salesman/TodayDeliveries";
+import SalesmanCustomersView from "@/components/salesman/SalesmanCustomersView";
 import ReceiptModal from "@/components/common/ReceiptModal";
 import { useApp } from "@/context/AppContext";
 import {
@@ -19,15 +20,18 @@ import {
   CheckCircle2,
   AlertCircle,
   LogOut,
-  Loader2
+  Loader2,
+  Store,
+  Users
 } from "lucide-react";
 
 export default function SalesmanPage() {
   const router = useRouter();
-  const { currentUser, logout, salesOrders, fetchOrders, isOrdersLoading, EGGS_PER_PETI } = useApp();
+  const { currentUser, logout, salesOrders, fetchOrders, isOrdersLoading, EGGS_PER_PETI, customers } = useApp();
 
-  // Tab: 'billing' | 'history' | 'stats'
+  // Tab: 'billing' | 'customers' | 'history' | 'stats'
   const [activeTab, setActiveTab] = useState("billing");
+  const [selectedCustomerForBilling, setSelectedCustomerForBilling] = useState(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
 
   // Authentication Lock: Ensure only logged in salesman can view this page
@@ -199,18 +203,34 @@ export default function SalesmanPage() {
             {/* TAB 1: NEW SALE BILLING FORM */}
             {activeTab === "billing" && (
               <div>
-                <NewSaleEntry activeSalesman={activeSalesman} />
+                <NewSaleEntry
+                  activeSalesman={activeSalesman}
+                  initialCustomer={selectedCustomerForBilling}
+                />
               </div>
             )}
 
-            {/* TAB 2: MY SALES HISTORY */}
+            {/* TAB 2: ROUTE CUSTOMERS & KHATA */}
+            {activeTab === "customers" && (
+              <div>
+                <SalesmanCustomersView
+                  activeSalesman={activeSalesman}
+                  onSelectForBilling={(cust) => {
+                    setSelectedCustomerForBilling(cust);
+                    setActiveTab("billing");
+                  }}
+                />
+              </div>
+            )}
+
+            {/* TAB 3: MY SALES HISTORY */}
             {activeTab === "history" && (
               <div>
                 <SalesmanHistory activeSalesman={activeSalesman} />
               </div>
             )}
 
-            {/* TAB 3: ROUTE & PERFORMANCE STATS */}
+            {/* TAB 4: ROUTE & PERFORMANCE STATS */}
             {activeTab === "stats" && (
               <div className="space-y-4">
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
@@ -272,10 +292,11 @@ export default function SalesmanPage() {
           </div>
 
           {/* Mobile Bottom Navigation Dock (Fixed Blurry Glass Effect) */}
-          <nav className="sticky bottom-0 left-0 right-0 z-30 bg-white/85 backdrop-blur-xl border-t border-slate-200/90 shadow-[0_-8px_30px_rgb(0,0,0,0.08)] px-3 py-2 pb-[max(env(safe-area-inset-bottom),0.6rem)] mt-auto">
-            <div className="grid grid-cols-3 gap-1.5 items-center max-w-sm mx-auto">
+          <nav className="sticky bottom-0 left-0 right-0 z-30 bg-white/85 backdrop-blur-xl border-t border-slate-200/90 shadow-[0_-8px_30px_rgb(0,0,0,0.08)] px-2.5 py-2 pb-[max(env(safe-area-inset-bottom),0.6rem)] mt-auto">
+            <div className="grid grid-cols-4 gap-1 items-center max-w-sm mx-auto">
               {[
                 { id: "billing", label: "New Sale", icon: ShoppingBag },
+                { id: "customers", label: "Customers", icon: Store, count: customers?.length || 0 },
                 { id: "history", label: "History", icon: History, count: myOrders.length },
                 { id: "stats", label: "Route Stats", icon: TrendingUp }
               ].map((tab) => {
@@ -292,7 +313,7 @@ export default function SalesmanPage() {
                     }`}
                   >
                     <div
-                      className={`w-12 h-7.5 flex items-center justify-center rounded-xl transition-all relative ${
+                      className={`w-11 h-7.5 flex items-center justify-center rounded-xl transition-all relative ${
                         isActive
                           ? "bg-amber-400 text-slate-950 shadow-xs scale-105"
                           : "bg-transparent text-slate-500"
@@ -312,7 +333,7 @@ export default function SalesmanPage() {
                       )}
                     </div>
                     <span
-                      className={`text-[10px] mt-0.5 tracking-tight truncate max-w-full leading-tight ${
+                      className={`text-[9.5px] mt-0.5 tracking-tight truncate max-w-full leading-tight ${
                         isActive ? "font-extrabold text-slate-950" : "font-semibold text-slate-500"
                       }`}
                     >

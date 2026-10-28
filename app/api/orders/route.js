@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Order from "@/models/Order";
 import User from "@/models/User";
+import Customer from "@/models/Customer";
 import mongoose from "mongoose";
 
 const EGGS_PER_PETI = 360;
@@ -82,6 +83,17 @@ export async function GET(req) {
       const regexPattern = digitsToMatch.split("").join("[\\s\\-\\.]*");
       const phoneRegex = new RegExp(regexPattern, "i");
 
+      // Check registered Customer profile
+      let registeredCust = null;
+      try {
+        registeredCust = await Customer.findOne({
+          phone: phoneRegex,
+          isActive: { $ne: false },
+        }).lean();
+      } catch (err) {
+        console.warn("Customer lookup error:", err);
+      }
+
       const pendingOrders = await Order.find({
         phone: phoneRegex,
         remainingBalance: { $gt: 0 },
@@ -94,42 +106,79 @@ export async function GET(req) {
         .sort({ createdAt: -1 })
         .lean();
 
-      const totalPendingUdhaar = pendingOrders.reduce(
+      const ordersPendingTotal = pendingOrders.reduce(
         (sum, o) => sum + (Number(o.remainingBalance) || 0),
         0
       );
+
+      const openingBal = registeredCust ? Number(registeredCust.openingBalance) || 0 : 0;
+      const totalPendingUdhaar = ordersPendingTotal + openingBal;
 
       const latestOrder = await Order.findOne({ phone: phoneRegex })
         .sort({ createdAt: -1 })
         .lean();
 
+      const mappedOrders = pendingOrders.map((o) => ({
+        id: o.invoiceNo || o._id.toString(),
+        invoiceNo: o.invoiceNo,
+        date: o.date,
+        time: o.time,
+        shopName: o.shopName,
+        shopkeeperName: o.shopkeeperName,
+        petis: o.petis,
+        netEggs: o.netEggs || o.grossEggs,
+        currentSaleAmount: o.currentSaleAmount || (o.totalAmount - (o.previousBalance || 0)),
+        totalAmount: o.totalAmount,
+        paidAmount: o.paidAmount,
+        remainingBalance: o.remainingBalance,
+        paymentStatus: o.paymentStatus,
+      }));
+
+      // If customer has an initial opening udhaar balance, prepend it as an invoice item
+      if (openingBal > 0) {
+        mappedOrders.unshift({
+          id: "OPENING",
+          invoiceNo: "OPENING",
+          date: registeredCust.createdAt
+            ? new Date(registeredCust.createdAt).toISOString().split("T")[0]
+            : "Opening",
+          time: "Baqaya",
+          shopName: registeredCust.shopName,
+          shopkeeperName: registeredCust.shopkeeperName,
+          petis: 0,
+          netEggs: 0,
+          currentSaleAmount: openingBal,
+          totalAmount: openingBal,
+          paidAmount: 0,
+          remainingBalance: openingBal,
+          paymentStatus: "Credit / Unpaid",
+        });
+      }
+
+      const customerDetails = registeredCust
+        ? {
+            shopName: registeredCust.shopName,
+            shopkeeperName: registeredCust.shopkeeperName,
+            phone: registeredCust.phone,
+            area: registeredCust.area,
+            openingBalance: openingBal,
+          }
+        : latestOrder
+        ? {
+            shopName: latestOrder.shopName,
+            shopkeeperName: latestOrder.shopkeeperName,
+            phone: latestOrder.phone,
+            area: latestOrder.area,
+            openingBalance: 0,
+          }
+        : null;
+
       return NextResponse.json({
         success: true,
         hasPendingUdhaar: totalPendingUdhaar > 0,
         totalPendingUdhaar,
-        pendingOrders: pendingOrders.map((o) => ({
-          id: o.invoiceNo || o._id.toString(),
-          invoiceNo: o.invoiceNo,
-          date: o.date,
-          time: o.time,
-          shopName: o.shopName,
-          shopkeeperName: o.shopkeeperName,
-          petis: o.petis,
-          netEggs: o.netEggs || o.grossEggs,
-          currentSaleAmount: o.currentSaleAmount || (o.totalAmount - (o.previousBalance || 0)),
-          totalAmount: o.totalAmount,
-          paidAmount: o.paidAmount,
-          remainingBalance: o.remainingBalance,
-          paymentStatus: o.paymentStatus,
-        })),
-        customerDetails: latestOrder
-          ? {
-              shopName: latestOrder.shopName,
-              shopkeeperName: latestOrder.shopkeeperName,
-              phone: latestOrder.phone,
-              area: latestOrder.area,
-            }
-          : null,
+        pendingOrders: mappedOrders,
+        customerDetails,
       });
     }
 
@@ -139,6 +188,15 @@ export async function GET(req) {
     const dateCondition = resolveDateFilter(dateFilter, startDate, endDate, specificDate);
     if (dateCondition) {
       filter = { ...filter, ...dateCondition };
+    }
+
+    // Customer Phone Filter for Khata Ledger
+    const customerPhone = searchParams.get("customerPhone");
+    if (customerPhone) {
+      const clean = customerPhone.replace(/[^0-9]/g, "");
+      const digits = clean.length >= 7 ? clean.slice(-7) : clean;
+      const reg = new RegExp(digits.split("").join("[\\s\\-\\.]*"), "i");
+      filter.phone = reg;
     }
 
     // 2. Salesman Filter
@@ -204,6 +262,7 @@ export async function GET(req) {
       hasPhoto: o.hasPhoto,
       photoUrl: o.photoUrl || null,
       petis: o.petis,
+      trays: o.trays || (o.looseEggs ? Math.floor(o.looseEggs / 30) : 0),
       looseEggs: o.looseEggs || 0,
       grossEggs: o.grossEggs || o.petis * EGGS_PER_PETI + (o.looseEggs || 0),
       brokenEggs: o.brokenEggs || 0,
@@ -256,8 +315,10 @@ export async function POST(req) {
     // Invoice serial numbers start from 0001 formatted with 4-digit zero padding
     const invoiceNo = String(count + 1).padStart(4, "0");
 
+    const EGGS_PER_TRAY = 30;
     const petis = Number(data.petis) || 0;
-    const looseEggs = Number(data.looseEggs) || 0;
+    const trays = Number(data.trays) || (data.looseEggs ? Math.floor(Number(data.looseEggs) / EGGS_PER_TRAY) : 0);
+    const looseEggs = Number(data.looseEggs) || trays * EGGS_PER_TRAY;
     const ratePerPeti = Number(data.ratePerPeti) || 0;
     const singleEggRate = ratePerPeti / EGGS_PER_PETI;
 
@@ -265,9 +326,12 @@ export async function POST(req) {
     const brokenEggs = Math.min(grossEggs, Number(data.brokenEggs) || 0);
     const netEggs = Math.max(0, grossEggs - brokenEggs);
 
-    const grossBill = petis * ratePerPeti + Math.round(looseEggs * singleEggRate);
-    const brokenDeduction = Math.round(brokenEggs * singleEggRate);
-    const currentSaleAmount = Math.max(0, grossBill - brokenDeduction);
+    // 1 Peti = 12 Trays = 360 eggs. Rate per tray = ratePerPeti / 12
+    const traysAmount = Math.round(trays * (ratePerPeti / 12));
+    const grossBill = petis * ratePerPeti + traysAmount;
+    // Per business rule: broken eggs are tracked for warehouse pool, but NOT deducted from customer bill
+    const brokenDeduction = 0;
+    const currentSaleAmount = grossBill;
 
     // Previous udhaar & grand total payable (Total Bill includes previous balance)
     const previousBalance = Math.max(0, Number(data.previousBalance) || 0);
@@ -280,19 +344,32 @@ export async function POST(req) {
     const paymentStatus =
       remainingBalance <= 0 ? "Full Paid" : paidAmount === 0 ? "Credit / Unpaid" : "Partial";
 
-    // If previous pending orders are being settled/rolled forward, mark them
+    // If previous pending orders are being settled/rolled forward, mark them and ZERO OUT their remainingBalance
     if (Array.isArray(data.pendingOrderInvoices) && data.pendingOrderInvoices.length > 0) {
       await Order.updateMany(
         {
           invoiceNo: { $in: data.pendingOrderInvoices },
-          $or: [
-            { settledInOrder: null },
-            { settledInOrder: { $exists: false } },
-            { settledInOrder: "" },
-          ],
         },
-        { $set: { settledInOrder: invoiceNo } }
+        {
+          $set: {
+            settledInOrder: invoiceNo,
+            remainingBalance: 0,
+            paymentStatus: "Full Paid",
+          },
+        }
       );
+
+      // If customer had an opening balance, zero it out since it was rolled forward/settled
+      if (data.phone) {
+        try {
+          const raw = String(data.phone).replace(/[^0-9]/g, "");
+          const last7 = raw.length >= 7 ? raw.slice(-7) : raw;
+          const reg = new RegExp(last7.split("").join("[\\s\\-\\.]*"), "i");
+          await Customer.updateMany({ phone: reg }, { $set: { openingBalance: 0 } });
+        } catch (e) {
+          console.warn("Error zeroing customer opening balance:", e);
+        }
+      }
     }
 
     const newOrder = await Order.create({
@@ -307,6 +384,7 @@ export async function POST(req) {
       hasPhoto: !!data.photoUrl,
       photoUrl: data.photoUrl || null,
       petis,
+      trays,
       looseEggs,
       grossEggs,
       brokenEggs,
@@ -327,6 +405,28 @@ export async function POST(req) {
       date: data.date || new Date().toISOString().split("T")[0],
       time: data.time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     });
+
+    // Auto-sync customer to Customer directory if not already created
+    if (newOrder.phone) {
+      try {
+        const cleanPhone = newOrder.phone.trim();
+        const existingCust = await Customer.findOne({ phone: cleanPhone });
+        if (!existingCust) {
+          await Customer.create({
+            shopName: newOrder.shopName || "Customer Shop",
+            shopkeeperName: newOrder.shopkeeperName || "Customer",
+            phone: cleanPhone,
+            area: newOrder.area || "Market Route",
+            salesmanId: newOrder.salesmanId || null,
+            salesmanName: newOrder.salesmanName || "",
+            openingBalance: 0,
+            isActive: true,
+          });
+        }
+      } catch (custSyncErr) {
+        // Non-blocking: ensure order returns even if customer sync encounters duplicate
+      }
+    }
 
     return NextResponse.json({
       success: true,

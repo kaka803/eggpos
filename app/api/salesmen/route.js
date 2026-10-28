@@ -3,12 +3,17 @@ import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import Order from "@/models/Order";
 
+import { healSettledOrders } from "@/lib/settlementHealer";
+
 export async function GET() {
   try {
     const conn = await connectDB();
     if (!conn) {
       return NextResponse.json({ success: true, salesmen: [] });
     }
+
+    // Auto-heal historical orders that were settled but had stale remaining balance
+    await healSettledOrders();
 
     const salesmen = await User.find({ role: "salesman", isActive: true })
       .sort({ createdAt: -1 })
@@ -25,9 +30,25 @@ export async function GET() {
         }).lean();
 
         const todaySoldPetis = todayOrders.reduce((acc, o) => acc + (Number(o.petis) || 0), 0);
-        const todaySoldEggs = todayOrders.reduce((acc, o) => acc + (Number(o.netEggs) || Number(o.totalEggs) || 0), 0);
-        const cashCollected = todayOrders.reduce((acc, o) => acc + (Number(o.paidAmount) || 0), 0);
-        const pendingUdhaar = todayOrders.reduce((acc, o) => acc + (Number(o.remainingBalance) || 0), 0);
+        const todaySoldEggs = todayOrders.reduce(
+          (acc, o) => acc + (Number(o.netEggs) || Number(o.totalEggs) || 0),
+          0
+        );
+        const cashCollected = todayOrders.reduce(
+          (acc, o) => acc + (Number(o.paidAmount) || 0),
+          0
+        );
+
+        // Only count ACTIVE unsettled orders for pending udhaar
+        const activeUnsettled = todayOrders.filter(
+          (o) =>
+            (!o.settledInOrder || o.settledInOrder === "") &&
+            Number(o.remainingBalance) > 0
+        );
+        const pendingUdhaar = activeUnsettled.reduce(
+          (acc, o) => acc + (Number(o.remainingBalance) || 0),
+          0
+        );
 
         return {
           id: sm._id.toString(),
@@ -81,7 +102,9 @@ export async function POST(req) {
       );
     }
 
-    const initialCode = (data.name ? data.name.slice(0, 1).toUpperCase() : "S") + Math.floor(10 + Math.random() * 90);
+    const initialCode =
+      (data.name ? data.name.slice(0, 1).toUpperCase() : "S") +
+      Math.floor(10 + Math.random() * 90);
 
     const newUser = await User.create({
       name: data.name,

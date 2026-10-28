@@ -222,12 +222,17 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEditOrder 
                   {(current.petis * EGGS_PER_PETI).toLocaleString()} Eggs Gross
                 </span>
               </div>
-              {Number(current.looseEggs) > 0 && (
+              {(Number(current.trays) > 0 || Number(current.looseEggs) > 0) && (
                 <div className="flex justify-between text-slate-800">
                   <span>
-                    <strong>{current.looseEggs} Loose Eggs</strong>
+                    <strong>
+                      {current.trays ? `${current.trays} Trays` : `${Math.floor(Number(current.looseEggs) / 30)} Trays`}
+                    </strong>{" "}
+                    (30 eggs/tray)
                   </span>
-                  <span className="font-bold">+{current.looseEggs} Eggs</span>
+                  <span className="font-bold">
+                    +{current.looseEggs || Number(current.trays) * 30} Eggs
+                  </span>
                 </div>
               )}
               {Number(current.brokenEggs) > 0 && (

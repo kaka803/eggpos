@@ -50,6 +50,10 @@ const OrderSchema = new mongoose.Schema(
       required: true,
       default: 0,
     },
+    trays: {
+      type: Number,
+      default: 0,
+    },
     looseEggs: {
       type: Number,
       default: 0,

@@ -28,16 +28,33 @@ export function AppProvider({ children }) {
     totalStockInPetis: 0,
     todaySoldPetis: 0,
     todaySoldEggs: 0,
+    periodSoldPetis: 0,
+    periodSoldEggs: 0,
+    grossRevenue: 0,
+    totalSaleRevenue: 0,
     cashCollected: 0,
     pendingUdhaar: 0,
-    totalBrokenPurchase: 0,
-    totalBrokenSales: 0,
+    costOfSoldEggs: 0,
+    grossProfit: 0,
+    netProfit: 0,
+    profitMargin: 0,
+    isNetLoss: false,
+    totalLossAmount: 0,
+    totalBrokenEggs: 0,
+    brokenSalesEggs: 0,
+    brokenSalesLoss: 0,
+    brokenPurchaseEggs: 0,
+    brokenPurchaseLoss: 0,
+    avgSaleRatePerPeti: 7300,
+    avgPurchaseCostPerPeti: 6800,
+    orderCount: 0,
     activeSalesmenCount: 0,
   });
 
   // Tab-specific datasets (Fetched on-demand / lazy loaded)
   const [stockInwards, setStockInwards] = useState([]);
   const [salesmen, setSalesmen] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [salesOrders, setSalesOrders] = useState([]);
 
   // Loading indicators
@@ -45,6 +62,28 @@ export function AppProvider({ children }) {
   const [isOrdersLoading, setIsOrdersLoading] = useState(false);
   const [isStockLoading, setIsStockLoading] = useState(false);
   const [isSalesmenLoading, setIsSalesmenLoading] = useState(false);
+  const [isCustomersLoading, setIsCustomersLoading] = useState(false);
+  const [brokenEggsData, setBrokenEggsData] = useState({
+    summary: {
+      totalInwardBroken: 0,
+      totalSalesReturnBroken: 0,
+      totalWarehouseBroken: 0,
+      totalBrokenInflow: 0,
+      totalSoldEggs: 0,
+      totalSoldRevenue: 0,
+      totalLossEggs: 0,
+      totalLossAmount: 0,
+      availableBrokenEggs: 0,
+      availableBrokenPetis: 0,
+      availableBrokenLoose: 0,
+    },
+    actions: [],
+    inwardRecords: [],
+    salesReturnRecords: [],
+  });
+  const [isBrokenEggsLoading, setIsBrokenEggsLoading] = useState(false);
+  const [expenses, setExpenses] = useState([]);
+  const [isExpensesLoading, setIsExpensesLoading] = useState(false);
   const [dbConnected, setDbConnected] = useState(true);
 
   // In-memory cache for full order details { [id]: fullOrderObject }
@@ -55,10 +94,21 @@ export function AppProvider({ children }) {
   const [activeReceipt, setActiveReceipt] = useState(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
 
-  // 1. Fetch Fast Aggregated Stats (Dashboard KPIs)
-  const fetchStats = useCallback(async (dateFilter = "today") => {
+  // 1. Fetch Fast Aggregated Stats (Dashboard KPIs & Profit/Loss)
+  const fetchStats = useCallback(async (dateFilter = "today", specificDate = null) => {
     try {
-      const res = await fetch(`/api/stats?dateFilter=${encodeURIComponent(dateFilter)}`);
+      const params = new URLSearchParams();
+      if (typeof dateFilter === "object" && dateFilter !== null) {
+        if (dateFilter.dateFilter) params.set("dateFilter", dateFilter.dateFilter);
+        if (dateFilter.date) params.set("date", dateFilter.date);
+      } else {
+        params.set("dateFilter", dateFilter || "today");
+        if (specificDate) {
+          params.set("date", specificDate);
+        }
+      }
+
+      const res = await fetch(`/api/stats?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.stats) {
@@ -86,6 +136,32 @@ export function AppProvider({ children }) {
       console.warn("fetchSalesmen error:", e);
     } finally {
       setIsSalesmenLoading(false);
+    }
+  }, []);
+
+  // 2b. Fetch Customers (Directory of registered shops)
+  const fetchCustomers = useCallback(async (params = {}) => {
+    setIsCustomersLoading(true);
+    try {
+      const searchParams = new URLSearchParams();
+      if (params.search) searchParams.set("search", params.search);
+      if (params.salesmanId) searchParams.set("salesmanId", params.salesmanId);
+      if (params.limit) searchParams.set("limit", params.limit.toString());
+
+      const res = await fetch(`/api/customers?${searchParams.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.customers) {
+          setCustomers(data.customers);
+          return data.customers;
+        }
+      }
+      return [];
+    } catch (e) {
+      console.warn("fetchCustomers error:", e);
+      return [];
+    } finally {
+      setIsCustomersLoading(false);
     }
   }, []);
 
@@ -182,17 +258,16 @@ export function AppProvider({ children }) {
     return null;
   }, []);
 
-  // Initial Load: Only fetch lightweight Stats & Salesmen!
-  // Orders & Stock Inwards are fetched strictly on-demand per tab.
+  // Initial Load: Fetch lightweight Stats, Salesmen, and Customer Directory!
   useEffect(() => {
     setIsLoading(true);
-    Promise.all([fetchStats(), fetchSalesmen()])
+    Promise.all([fetchStats(), fetchSalesmen(), fetchCustomers()])
       .catch((err) => console.warn("Init fetch warning:", err))
       .finally(() => {
         setIsLoading(false);
         setDbConnected(true);
       });
-  }, [fetchStats, fetchSalesmen]);
+  }, [fetchStats, fetchSalesmen, fetchCustomers]);
 
   // Derived stock totals (backwards compatibility for UI)
   const totalStockInEggs = stats.totalStockInEggs;
@@ -249,6 +324,109 @@ export function AppProvider({ children }) {
     return updatedRecord;
   };
 
+  // Broken Eggs Operations
+  const fetchBrokenEggs = useCallback(async () => {
+    try {
+      setIsBrokenEggsLoading(true);
+      const res = await fetch("/api/broken-eggs");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setBrokenEggsData({
+            summary: data.summary,
+            actions: data.actions || [],
+            inwardRecords: data.inwardRecords || [],
+            salesReturnRecords: data.salesReturnRecords || [],
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("fetchBrokenEggs error:", err);
+    } finally {
+      setIsBrokenEggsLoading(false);
+    }
+  }, []);
+
+  const addBrokenEggAction = useCallback(async (actionData) => {
+    const res = await fetch("/api/broken-eggs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(actionData),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || "Failed to record broken egg action");
+    }
+    await fetchBrokenEggs();
+    await fetchStats();
+    return data;
+  }, [fetchBrokenEggs, fetchStats]);
+
+  const deleteBrokenEggAction = useCallback(async (id) => {
+    const res = await fetch(`/api/broken-eggs?id=${id}`, {
+      method: "DELETE",
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || "Failed to delete record");
+    }
+    await fetchBrokenEggs();
+    await fetchStats();
+    return data;
+  }, [fetchBrokenEggs, fetchStats]);
+
+  // Expenses Operations
+  const fetchExpenses = useCallback(async (dateFilter = "today", specificDate = null, category = "all") => {
+    try {
+      setIsExpensesLoading(true);
+      const params = new URLSearchParams();
+      if (dateFilter && dateFilter !== "all") params.set("dateFilter", dateFilter);
+      if (specificDate) params.set("date", specificDate);
+      if (category && category !== "all") params.set("category", category);
+
+      const res = await fetch(`/api/expenses?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.expenses) {
+          setExpenses(data.expenses);
+          return data;
+        }
+      }
+    } catch (err) {
+      console.warn("fetchExpenses error:", err);
+    } finally {
+      setIsExpensesLoading(false);
+    }
+  }, []);
+
+  const addExpense = useCallback(async (expenseData) => {
+    const res = await fetch("/api/expenses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(expenseData),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || "Failed to record expense");
+    }
+    await fetchExpenses();
+    await fetchStats();
+    return data;
+  }, [fetchExpenses, fetchStats]);
+
+  const deleteExpense = useCallback(async (id) => {
+    const res = await fetch(`/api/expenses?id=${id}`, {
+      method: "DELETE",
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || "Failed to delete expense");
+    }
+    await fetchExpenses();
+    await fetchStats();
+    return data;
+  }, [fetchExpenses, fetchStats]);
+
   // Add salesman to Backend & update local state
   const addSalesman = async (salesmanData) => {
     try {
@@ -273,6 +451,66 @@ export function AppProvider({ children }) {
     return salesmanData;
   };
 
+  // Add customer to Backend & update local state
+  const addCustomer = async (custData) => {
+    try {
+      const res = await fetch("/api/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(custData),
+      });
+      const data = await res.json();
+      if (data.success && data.customer) {
+        setCustomers((prev) => [data.customer, ...prev]);
+        return { success: true, customer: data.customer };
+      }
+      return { success: false, error: data.error || "Failed to create customer" };
+    } catch (e) {
+      console.error("Add Customer Error:", e);
+      return { success: false, error: e.message };
+    }
+  };
+
+  // Update customer in Backend & update local state
+  const updateCustomer = async (custData) => {
+    try {
+      const res = await fetch("/api/customers", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(custData),
+      });
+      const data = await res.json();
+      if (data.success && data.customer) {
+        setCustomers((prev) =>
+          prev.map((c) => (c.id === data.customer.id ? { ...c, ...data.customer } : c))
+        );
+        return { success: true, customer: data.customer };
+      }
+      return { success: false, error: data.error || "Failed to update customer" };
+    } catch (e) {
+      console.error("Update Customer Error:", e);
+      return { success: false, error: e.message };
+    }
+  };
+
+  // Delete customer from Backend & update local state
+  const deleteCustomer = async (customerId) => {
+    try {
+      const res = await fetch(`/api/customers?id=${encodeURIComponent(customerId)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCustomers((prev) => prev.filter((c) => c.id !== customerId && c._id !== customerId));
+        return { success: true };
+      }
+      return { success: false, error: data.error };
+    } catch (e) {
+      console.error("Delete Customer Error:", e);
+      return { success: false, error: e.message };
+    }
+  };
+
   // Add sale order to Backend & update local state
   const addSaleOrder = async (orderData) => {
     try {
@@ -289,23 +527,10 @@ export function AppProvider({ children }) {
 
         setSalesOrders((prev) => [data.order, ...prev]);
 
-        // Update salesman metrics in local state
-        setSalesmen((prev) =>
-          prev.map((s) => {
-            if (s.id === data.order.salesmanId || s.name === data.order.salesmanName) {
-              return {
-                ...s,
-                todaySoldPetis: (s.todaySoldPetis || 0) + Number(data.order.petis),
-                todaySoldEggs: (s.todaySoldEggs || 0) + Number(data.order.netEggs || data.order.totalEggs),
-                cashCollected: (s.cashCollected || 0) + Number(data.order.paidAmount),
-                pendingUdhaar: (s.pendingUdhaar || 0) + Math.max(0, Number(data.order.remainingBalance)),
-              };
-            }
-            return s;
-          })
-        );
-
-        fetchStats(); // Update dashboard KPIs in background
+        // Refresh live salesmen metrics, customer khata, and stats from server
+        fetchSalesmen();
+        fetchCustomers();
+        fetchStats();
         return data.order;
       }
     } catch (e) {
@@ -313,6 +538,7 @@ export function AppProvider({ children }) {
     }
 
     setSalesOrders((prev) => [orderData, ...prev]);
+    fetchSalesmen();
     fetchStats();
     return orderData;
   };
@@ -435,6 +661,22 @@ export function AppProvider({ children }) {
         fetchSalesmen,
         addSalesman,
         isSalesmenLoading,
+        customers,
+        fetchCustomers,
+        addCustomer,
+        updateCustomer,
+        deleteCustomer,
+        isCustomersLoading,
+        brokenEggsData,
+        isBrokenEggsLoading,
+        fetchBrokenEggs,
+        addBrokenEggAction,
+        deleteBrokenEggAction,
+        expenses,
+        isExpensesLoading,
+        fetchExpenses,
+        addExpense,
+        deleteExpense,
         salesOrders,
         setSalesOrders,
         fetchOrders,
