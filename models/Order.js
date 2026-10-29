@@ -153,6 +153,5 @@ const OrderSchema = new mongoose.Schema(
 OrderSchema.index({ date: -1, createdAt: -1 });
 OrderSchema.index({ salesmanId: 1, date: -1 });
 OrderSchema.index({ paymentStatus: 1 });
-OrderSchema.index({ invoiceNo: 1 });
 
 export default mongoose.models.Order || mongoose.model("Order", OrderSchema);

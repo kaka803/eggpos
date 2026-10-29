@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 export default function SalesmanHistory({ activeSalesman }) {
-  const { salesOrders, openReceipt, isOrdersLoading, EGGS_PER_PETI } = useApp();
+  const { salesOrders, openReceipt, isOrdersLoading, EGGS_PER_PETI, settings } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all"); // 'all' | 'paid' | 'credit'
 
@@ -49,7 +49,7 @@ export default function SalesmanHistory({ activeSalesman }) {
 
   const getWhatsAppLink = (receipt) => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const message = generateWhatsAppInvoiceMessage(receipt, origin);
+    const message = generateWhatsAppInvoiceMessage(receipt, origin, settings);
     return getWhatsAppPhoneUrl(receipt.phone, message);
   };
 

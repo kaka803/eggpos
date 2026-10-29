@@ -1,22 +1,28 @@
 "use client";
 
-import React, { useEffect, useState, Suspense } from "react";
+import React, { useEffect, useState, useRef, Suspense } from "react";
 import { useParams } from "next/navigation";
 import { Download, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { downloadThermalReceiptPDF } from "@/lib/thermalPdf";
-
-const EGGS_PER_PETI = 360;
+import { useApp } from "@/context/AppContext";
 
 function AutoDownloadReceiptContent() {
+  const { settings, EGGS_PER_PETI: contextEggsPerPeti } = useApp();
+  const eggsPerPeti = contextEggsPerPeti || 360;
   const params = useParams();
   const id = params?.id;
 
   const [order, setOrder] = useState(null);
   const [status, setStatus] = useState("loading"); // 'loading' | 'downloaded' | 'error'
   const [errorMessage, setErrorMessage] = useState("");
+  const hasDownloadedRef = useRef(false);
+
+  const effectiveGodamName =
+    order?.godamName || settings?.godamName || "Egg Wholesale Warehouse";
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || hasDownloadedRef.current) return;
+    hasDownloadedRef.current = true;
 
     let isMounted = true;
 
@@ -31,8 +37,15 @@ function AutoDownloadReceiptContent() {
           if (!isMounted) return;
           setOrder(data.order);
 
+          const godamInfo = {
+            godamName: data.order.godamName || settings?.godamName,
+            godamAddress: data.order.godamAddress || settings?.godamAddress,
+            godamPhone: data.order.godamPhone || settings?.godamPhone,
+            godamCity: data.order.godamCity || settings?.godamCity,
+          };
+
           // Automatically trigger thermal PDF download immediately
-          downloadThermalReceiptPDF(data.order, EGGS_PER_PETI);
+          downloadThermalReceiptPDF(data.order, eggsPerPeti, godamInfo);
           setStatus("downloaded");
         } else {
           throw new Error(data.error || "Receipt record not found");
@@ -49,11 +62,17 @@ function AutoDownloadReceiptContent() {
     return () => {
       isMounted = false;
     };
-  }, [id]);
+  }, [id, settings, eggsPerPeti]);
 
   const handleManualTrigger = () => {
     if (order) {
-      downloadThermalReceiptPDF(order, EGGS_PER_PETI);
+      const godamInfo = {
+        godamName: order.godamName || settings?.godamName,
+        godamAddress: order.godamAddress || settings?.godamAddress,
+        godamPhone: order.godamPhone || settings?.godamPhone,
+        godamCity: order.godamCity || settings?.godamCity,
+      };
+      downloadThermalReceiptPDF(order, eggsPerPeti, godamInfo);
     }
   };
 
@@ -82,7 +101,7 @@ function AutoDownloadReceiptContent() {
               <Loader2 className="w-7 h-7 animate-spin text-amber-500" />
             </div>
             <h1 className="text-sm font-extrabold text-slate-900 tracking-wide uppercase">
-              Al-Barkat Egg Wholesale
+              {effectiveGodamName}
             </h1>
             <p className="text-xs text-amber-600 font-bold mt-1">
               Preparing Receipt PDF...
@@ -97,7 +116,7 @@ function AutoDownloadReceiptContent() {
               <CheckCircle2 className="w-7 h-7 text-emerald-600" />
             </div>
             <h1 className="text-sm font-extrabold text-slate-900 tracking-wide uppercase">
-              Al-Barkat Egg Wholesale
+              {effectiveGodamName}
             </h1>
             <p className="text-xs text-emerald-700 font-bold mt-1">
               Receipt #{order?.invoiceNo || ""} PDF Downloaded Successfully

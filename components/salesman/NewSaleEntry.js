@@ -605,7 +605,8 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <>
+      <form onSubmit={handleSubmit} className="space-y-4">
       {/* =========================================================================
           STEP 1: SHOP & CUSTOMER INFORMATION
           ========================================================================= */}
@@ -1414,17 +1415,18 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
           </>
         )}
       </button>
-
-      {/* Salesman Add Customer Modal */}
-      <SalesmanNewCustomerModal
-        isOpen={isAddCustomerModalOpen}
-        onClose={() => setIsAddCustomerModalOpen(false)}
-        activeSalesman={activeSalesman}
-        prefill={customerModalPrefill}
-        onCustomerAdded={(newCust) => {
-          handleSelectCustomer(newCust);
-        }}
-      />
     </form>
+
+    {/* Salesman Add Customer Modal */}
+    <SalesmanNewCustomerModal
+      isOpen={isAddCustomerModalOpen}
+      onClose={() => setIsAddCustomerModalOpen(false)}
+      activeSalesman={activeSalesman}
+      prefill={customerModalPrefill}
+      onCustomerAdded={(newCust) => {
+        handleSelectCustomer(newCust);
+      }}
+    />
+  </>
   );
 }

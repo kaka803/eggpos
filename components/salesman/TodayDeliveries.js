@@ -6,7 +6,7 @@ import { Receipt, Share2, CheckCircle2, Loader2 } from "lucide-react";
 import { generateWhatsAppInvoiceMessage, getWhatsAppPhoneUrl } from "@/lib/whatsappTemplate";
 
 export default function TodayDeliveries({ activeSalesman }) {
-  const { salesOrders, openReceipt, isOrdersLoading, EGGS_PER_PETI } = useApp();
+  const { salesOrders, openReceipt, isOrdersLoading, EGGS_PER_PETI, settings } = useApp();
 
   const myOrders = salesOrders.filter(
     (o) => o.salesmanId === activeSalesman?.id || o.salesmanName === activeSalesman?.name
@@ -14,7 +14,7 @@ export default function TodayDeliveries({ activeSalesman }) {
 
   const getWhatsAppLink = (receipt) => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const message = generateWhatsAppInvoiceMessage(receipt, origin);
+    const message = generateWhatsAppInvoiceMessage(receipt, origin, settings);
     return getWhatsAppPhoneUrl(receipt.phone, message);
   };
 

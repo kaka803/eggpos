@@ -20,7 +20,7 @@ export default function RootLayout({ children }) {
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
       </head>
-      <body className="min-h-full flex flex-col bg-[#F6F7FB] text-slate-900 font-sans">
+      <body suppressHydrationWarning className="min-h-full flex flex-col bg-[#F6F7FB] text-slate-900 font-sans">
         <AppProvider>
           {children}
         </AppProvider>

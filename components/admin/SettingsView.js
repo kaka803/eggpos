@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 
 export default function SettingsView() {
-  const { currentUser, login } = useApp();
+  const { currentUser, login, setSettings, fetchSettings: refreshGlobalSettings } = useApp();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -107,6 +107,18 @@ export default function SettingsView() {
       const data = await res.json();
       if (data.success) {
         showToast("success", "Godam details updated successfully!");
+        const updated = {
+          godamName: godamForm.godamName,
+          godamAddress: godamForm.godamAddress,
+          godamPhone: godamForm.godamPhone,
+          godamCity: godamForm.godamCity,
+          eggsPetiSize: Number(godamForm.eggsPetiSize) || 360,
+        };
+        if (setSettings) setSettings(updated);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("andagodam_settings", JSON.stringify(updated));
+        }
+        if (refreshGlobalSettings) refreshGlobalSettings();
       } else {
         showToast("error", data.error || "Failed to update godam details");
       }

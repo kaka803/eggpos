@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 
 export default function OrderDetailsModal({ order, isOpen, onClose, onEditOrder }) {
-  const { openReceipt, fetchOrderDetails, EGGS_PER_PETI, currentUser } = useApp();
+  const { openReceipt, fetchOrderDetails, EGGS_PER_PETI, currentUser, settings } = useApp();
 
   const [detailedOrder, setDetailedOrder] = useState(order);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
@@ -70,7 +70,7 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEditOrder 
 
   const getWhatsAppLink = (receipt) => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const message = generateWhatsAppInvoiceMessage(receipt, origin);
+    const message = generateWhatsAppInvoiceMessage(receipt, origin, settings);
     return getWhatsAppPhoneUrl(receipt.phone, message);
   };
 

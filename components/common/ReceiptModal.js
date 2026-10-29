@@ -6,12 +6,18 @@ import { Share2, Download, Loader2, X, MessageCircle } from "lucide-react";
 import { generateWhatsAppInvoiceMessage, getWhatsAppPhoneUrl } from "@/lib/whatsappTemplate";
 
 export default function ReceiptModal() {
-  const { activeReceipt, showReceiptModal, closeReceipt, EGGS_PER_PETI } = useApp();
+  const { activeReceipt, showReceiptModal, closeReceipt, EGGS_PER_PETI, settings } = useApp();
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isSharingPdf, setIsSharingPdf] = useState(false);
   const receiptRef = useRef(null);
 
   if (!showReceiptModal || !activeReceipt) return null;
+
+  const godamName = settings?.godamName || activeReceipt.godamName || "AL-BARKAT EGG WHOLESALE";
+  const godamAddress = settings?.godamAddress || activeReceipt.godamAddress || "";
+  const godamCity = settings?.godamCity || activeReceipt.godamCity || "";
+  const godamPhone = settings?.godamPhone || activeReceipt.godamPhone || "";
+  const addressLine = [godamAddress, godamCity].filter(Boolean).join(", ");
 
   // Share PDF directly to WhatsApp using Web Share API
   const handleWhatsAppShare = async () => {
@@ -19,7 +25,7 @@ export default function ReceiptModal() {
     setIsSharingPdf(true);
     try {
       const { getThermalReceiptPDFBlob } = await import("@/lib/thermalPdf");
-      const pdfBlob = getThermalReceiptPDFBlob(activeReceipt, EGGS_PER_PETI);
+      const pdfBlob = getThermalReceiptPDFBlob(activeReceipt, EGGS_PER_PETI, settings);
       if (!pdfBlob) throw new Error("PDF generation failed");
 
       const fileName = `invoice_${activeReceipt.id || "receipt"}.pdf`;
@@ -29,7 +35,7 @@ export default function ReceiptModal() {
         // Web Share API with PDF file — opens native share sheet (WhatsApp, etc.)
         await navigator.share({
           title: `Invoice #${activeReceipt.id} — ${activeReceipt.shopName}`,
-          text: `Al-Barkat Egg Wholesale — Invoice #${activeReceipt.id}`,
+          text: `${godamName} — Invoice #${activeReceipt.id}`,
           files: [pdfFile],
         });
       } else {
@@ -56,7 +62,7 @@ export default function ReceiptModal() {
   const handleDirectWhatsApp = () => {
     if (!activeReceipt) return;
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const message = generateWhatsAppInvoiceMessage(activeReceipt, origin);
+    const message = generateWhatsAppInvoiceMessage(activeReceipt, origin, settings);
     const url = getWhatsAppPhoneUrl(activeReceipt.phone, message);
     window.open(url, "_blank");
   };
@@ -72,7 +78,7 @@ export default function ReceiptModal() {
     try {
       setIsGeneratingPdf(true);
       const { downloadThermalReceiptPDF } = await import("@/lib/thermalPdf");
-      downloadThermalReceiptPDF(activeReceipt, EGGS_PER_PETI);
+      downloadThermalReceiptPDF(activeReceipt, EGGS_PER_PETI, settings);
     } catch (err) {
       console.error("PDF generation failed:", err);
       alert("Failed to generate thermal PDF. Please try again.");
@@ -108,16 +114,23 @@ export default function ReceiptModal() {
         >
           {/* Header */}
           <div className="text-center pb-2">
-            <h2 className="text-sm font-black tracking-wider uppercase text-slate-950">
-              AL-BARKAT EGG WHOLESALE
+            <h2 className="text-sm font-black tracking-wider uppercase text-slate-950 break-words">
+              {godamName}
             </h2>
-            <p className="text-[10px] text-slate-700 tracking-wide">
-              Central Egg Godam & Supply
-            </p>
-            <p className="text-[9px] text-slate-600">
-              Main Poultry Market, Wholesale Sector
-            </p>
-            <p className="text-[9px] text-slate-600">Tel: 0300-1234567 • 0321-9876543</p>
+            {addressLine ? (
+              <p className="text-[10px] text-slate-700 tracking-wide break-words whitespace-pre-line">
+                {addressLine}
+              </p>
+            ) : (
+              <p className="text-[10px] text-slate-700 tracking-wide">
+                Central Egg Godam & Supply
+              </p>
+            )}
+            {godamPhone && (
+              <p className="text-[9px] text-slate-600 font-semibold mt-0.5">
+                Tel: {godamPhone}
+              </p>
+            )}
           </div>
 
           <div className="text-center text-slate-500 my-1 select-none">

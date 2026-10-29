@@ -94,6 +94,57 @@ export function AppProvider({ children }) {
   const [activeReceipt, setActiveReceipt] = useState(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
 
+  // Godam and System Settings (name, address, contact phone, etc.)
+  const [settings, setSettings] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("andagodam_settings");
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+    return {
+      godamName: "AL-BARKAT EGG WHOLESALE WAREHOUSE",
+      godamAddress: "",
+      godamPhone: "",
+      godamCity: "",
+      eggsPetiSize: 360,
+    };
+  });
+
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await fetch("/api/settings");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.settings) {
+          const s = data.settings;
+          const sanitized = {
+            godamName: s.godamName || "AL-BARKAT EGG WHOLESALE WAREHOUSE",
+            godamAddress: s.godamAddress || "",
+            godamPhone: s.godamPhone || "",
+            godamCity: s.godamCity || "",
+            eggsPetiSize: Number(s.eggsPetiSize) || 360,
+          };
+          setSettings(sanitized);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("andagodam_settings", JSON.stringify(sanitized));
+          }
+          return sanitized;
+        }
+      }
+    } catch (e) {
+      console.warn("fetchSettings in AppContext error:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
   // 1. Fetch Fast Aggregated Stats (Dashboard KPIs & Profit/Loss)
   const fetchStats = useCallback(async (dateFilter = "today", specificDate = null) => {
     try {
@@ -695,6 +746,9 @@ export function AppProvider({ children }) {
         closeReceipt,
         uploadShopImage,
         refreshData,
+        settings,
+        setSettings,
+        fetchSettings,
         isLoading,
         dbConnected,
       }}

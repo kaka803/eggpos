@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Order from "@/models/Order";
+import User from "@/models/User";
 import mongoose from "mongoose";
 
 const EGGS_PER_PETI = 360;
@@ -32,6 +33,10 @@ export async function GET(req, { params }) {
     if (!order) {
       return NextResponse.json({ success: false, error: "Order not found" }, { status: 404 });
     }
+
+    const admin = await User.findOne({ role: "admin" })
+      .select("godamName godamAddress godamPhone godamCity eggsPetiSize")
+      .lean();
 
     const grossEggs = order.grossEggs || order.petis * EGGS_PER_PETI + (order.looseEggs || 0);
     const brokenEggs = order.brokenEggs || 0;
@@ -72,6 +77,10 @@ export async function GET(req, { params }) {
       date: order.date,
       time: order.time,
       notes: order.notes || "",
+      godamName: admin?.godamName || "AL-BARKAT EGG WHOLESALE WAREHOUSE",
+      godamAddress: admin?.godamAddress || "",
+      godamPhone: admin?.godamPhone || "",
+      godamCity: admin?.godamCity || "",
       createdAt: order.createdAt,
     };
 
