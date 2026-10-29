@@ -103,234 +103,215 @@ export default function ReceiptModal() {
           </button>
         </div>
 
-        {/* Realistic Thermal Paper Slip */}
+        {/* Authentic POS Thermal Paper Slip */}
         <div
           ref={receiptRef}
           id="printable-receipt"
-          className="bg-[#FCFCFA] text-slate-950 p-5 font-mono text-[11px] leading-tight shadow-2xl relative border-x border-slate-300"
+          className="bg-white text-black p-6 font-mono text-[11px] leading-snug shadow-xl border border-neutral-300 select-text"
           style={{
-            fontFamily: "Courier, 'Courier New', monospace",
+            fontFamily: "'Courier New', Courier, monospace",
           }}
         >
-          {/* Header */}
-          <div className="text-center pb-2">
-            <h2 className="text-sm font-black tracking-wider uppercase text-slate-950 break-words">
+          {/* Top Left-Aligned Header */}
+          <div className="space-y-0.5">
+            <h1 className="font-bold text-xs tracking-wide uppercase text-black">
               {godamName}
-            </h2>
-            {addressLine ? (
-              <p className="text-[10px] text-slate-700 tracking-wide break-words whitespace-pre-line">
-                {addressLine}
-              </p>
-            ) : (
-              <p className="text-[10px] text-slate-700 tracking-wide">
-                Central Egg Godam & Supply
-              </p>
+            </h1>
+            {addressLine && (
+              <p className="uppercase text-[10px]">LOCATION :{addressLine}</p>
             )}
             {godamPhone && (
-              <p className="text-[9px] text-slate-600 font-semibold mt-0.5">
-                Tel: {godamPhone}
-              </p>
+              <p className="text-[10px]">TEL      :{godamPhone}</p>
             )}
           </div>
 
-          <div className="text-center text-slate-500 my-1 select-none">
-            ================================
-          </div>
-
-          {/* Receipt Info */}
-          <div className="space-y-1 py-1">
-            <div className="flex justify-between font-bold">
-              <span>RCV-NO: #{activeReceipt.id}</span>
-              <span>{activeReceipt.time}</span>
+          <div className="my-2 space-y-0.5 text-[10px]">
+            <div className="flex">
+              <span className="w-20">DATE</span>
+              <span>: {activeReceipt.date} {activeReceipt.time || ""}</span>
             </div>
-            <div className="flex justify-between text-slate-700">
-              <span>DATE: {activeReceipt.date}</span>
-              <span>SM: {activeReceipt.salesmanName.slice(0, 14)}</span>
+            <div className="flex">
+              <span className="w-20">INVOICE</span>
+              <span>: #{activeReceipt.id || activeReceipt.invoiceNo || "-"}</span>
+            </div>
+            <div className="flex">
+              <span className="w-20">CASHIER</span>
+              <span>: {activeReceipt.salesmanName || "Salesman"}</span>
             </div>
           </div>
 
-          <div className="text-center text-slate-400 select-none">
-            --------------------------------
-          </div>
-
-          {/* Customer / Shop Info */}
-          <div className="space-y-0.5 py-1">
-            <p className="font-bold text-xs uppercase text-slate-950">
-              SHOP: {activeReceipt.shopName}
-            </p>
-            <p className="text-slate-700">ATTN: {activeReceipt.shopkeeperName}</p>
-            <p className="text-slate-700">TEL:  {activeReceipt.phone}</p>
+          <div className="my-2 space-y-0.5 text-[10px]">
+            <div className="flex font-bold">
+              <span className="w-20">SHOP</span>
+              <span className="uppercase">: {activeReceipt.shopName || "CASH CUSTOMER"}</span>
+            </div>
+            <div className="flex">
+              <span className="w-20">CUSTOMER</span>
+              <span>: {activeReceipt.shopkeeperName || "-"}</span>
+            </div>
+            <div className="flex">
+              <span className="w-20">PHONE</span>
+              <span>: {activeReceipt.phone || "-"}</span>
+            </div>
             {activeReceipt.area && (
-              <p className="text-slate-600 truncate">LOC:  {activeReceipt.area}</p>
+              <div className="flex">
+                <span className="w-20">LOCATION</span>
+                <span>: {activeReceipt.area}</span>
+              </div>
             )}
           </div>
 
-          <div className="text-center text-slate-500 my-1 select-none">
-            ================================
+          {/* Double Line Divider */}
+          <div className="text-black select-none tracking-tighter font-bold my-1 text-[11px]">
+            ========================================
           </div>
 
-          {/* Items Header */}
-          <div className="flex justify-between font-black text-[10px] pb-1 uppercase border-b border-slate-400">
-            <span className="w-10">QTY</span>
-            <span className="flex-1 text-left">ITEM / UNIT</span>
+          {/* Table Header */}
+          <div className="flex justify-between font-bold text-[10px] py-0.5">
+            <span className="flex-1 text-left">ITEM</span>
+            <span className="w-8 text-right">QTY</span>
+            <span className="w-16 text-right">PRICE</span>
             <span className="w-16 text-right">TOTAL</span>
           </div>
 
+          {/* Single Line Divider */}
+          <div className="text-black select-none tracking-tighter my-0.5 text-[11px]">
+            ----------------------------------------
+          </div>
+
           {/* Items Rows */}
-          <div className="py-2 space-y-1.5">
-            <div>
-              <div className="flex justify-between font-bold">
-                <span className="w-10">{activeReceipt.petis} BX</span>
-                <span className="flex-1 text-left font-black">
-                  PETIS ({activeReceipt.petis * EGGS_PER_PETI} EGGS)
-                </span>
-                <span className="w-16 text-right">
-                  {(activeReceipt.petis * activeReceipt.ratePerPeti).toLocaleString()}
-                </span>
-              </div>
-              <div className="text-[10px] text-slate-600 pl-10">
-                @ Rs. {Number(activeReceipt.ratePerPeti).toLocaleString()} / Peti
-              </div>
+          <div className="space-y-1 py-1 text-[10px]">
+            {/* Petis */}
+            <div className="flex justify-between font-bold">
+              <span className="flex-1 text-left truncate pr-1">PETIS ({activeReceipt.petis * EGGS_PER_PETI} EGGS)</span>
+              <span className="w-8 text-right">{activeReceipt.petis}</span>
+              <span className="w-16 text-right">{Number(activeReceipt.ratePerPeti).toLocaleString()}</span>
+              <span className="w-16 text-right font-bold">{(activeReceipt.petis * activeReceipt.ratePerPeti).toLocaleString()}</span>
             </div>
 
+            {/* Loose Eggs */}
             {activeReceipt.looseEggs > 0 && (
-              <div>
-                <div className="flex justify-between font-bold">
-                  <span className="w-10">{activeReceipt.looseEggs} PC</span>
-                  <span className="flex-1 text-left">LOOSE EGGS</span>
-                  <span className="w-16 text-right">
-                    {Math.round(
-                      activeReceipt.looseEggs * (activeReceipt.ratePerPeti / EGGS_PER_PETI)
-                    ).toLocaleString()}
-                  </span>
-                </div>
-                <div className="text-[10px] text-slate-600 pl-10">
-                  @ Rs. {activeReceipt.ratePerEgg} / Egg
-                </div>
+              <div className="flex justify-between font-bold">
+                <span className="flex-1 text-left truncate pr-1">LOOSE EGGS</span>
+                <span className="w-8 text-right">{activeReceipt.looseEggs}</span>
+                <span className="w-16 text-right">{activeReceipt.ratePerEgg}</span>
+                <span className="w-16 text-right font-bold">
+                  {Math.round(
+                    activeReceipt.looseEggs * (activeReceipt.ratePerPeti / EGGS_PER_PETI)
+                  ).toLocaleString()}
+                </span>
               </div>
             )}
 
-            {/* BROKEN EGGS DEDUCTION ROW */}
+            {/* Broken Eggs Deduction */}
             {brokenEggs > 0 && (
-              <div className="text-red-700 font-bold pt-1 border-t border-dashed border-slate-300">
-                <div className="flex justify-between">
-                  <span className="w-10">-{brokenEggs}</span>
-                  <span className="flex-1 text-left">LESS TOOTE ANDAY (DAMAGE)</span>
-                  <span className="w-16 text-right">
-                    - {Number(activeReceipt.brokenDeduction || 0).toLocaleString()}
-                  </span>
-                </div>
-                <div className="text-[9px] text-red-600 pl-10">
-                  Breakage deduction credited to shop
-                </div>
+              <div className="flex justify-between font-bold">
+                <span className="flex-1 text-left truncate pr-1">LESS TOOTE (DAMAGE)</span>
+                <span className="w-8 text-right">-{brokenEggs}</span>
+                <span className="w-16 text-right">-</span>
+                <span className="w-16 text-right font-bold">-{Number(activeReceipt.brokenDeduction || 0).toLocaleString()}</span>
               </div>
             )}
           </div>
 
-          <div className="text-center text-slate-400 select-none">
-            --------------------------------
+          {/* Single Line Divider */}
+          <div className="text-black select-none tracking-tighter my-0.5 text-[11px]">
+            ----------------------------------------
           </div>
 
-          {/* Unit calculation summary */}
-          <div className="py-1 text-[10px] text-slate-700 space-y-0.5">
+          {/* Egg Count Summary */}
+          <div className="flex justify-between text-[10px] py-0.5">
+            <span>Gross:{grossEggs.toLocaleString()}{brokenEggs > 0 ? ` Damaged:-${brokenEggs}` : ""}</span>
+            <span className="font-bold">Net:{netEggs.toLocaleString()} Eggs</span>
+          </div>
+
+          {/* Single Line Divider */}
+          <div className="text-black select-none tracking-tighter my-0.5 text-[11px]">
+            ----------------------------------------
+          </div>
+
+          {/* Sub Totals */}
+          <div className="space-y-0.5 py-1 text-[11px]">
             <div className="flex justify-between">
-              <span>GROSS EGGS:</span>
-              <span>{grossEggs.toLocaleString()} PCS</span>
-            </div>
-            {brokenEggs > 0 && (
-              <div className="flex justify-between text-red-600 font-bold">
-                <span>DAMAGED / BROKEN:</span>
-                <span>-{brokenEggs.toLocaleString()} PCS</span>
-              </div>
-            )}
-            <div className="flex justify-between font-bold text-slate-900">
-              <span>NET BILLABLE EGGS:</span>
-              <span>{netEggs.toLocaleString()} PCS</span>
-            </div>
-            <div className="flex justify-between text-slate-500">
-              <span>CALCULATION UNIT:</span>
-              <span>1 PETI = {EGGS_PER_PETI} EGGS</span>
-            </div>
-          </div>
-
-          <div className="text-center text-slate-500 my-1 select-none">
-            ================================
-          </div>
-
-          {/* Totals Section */}
-          <div className="space-y-1 py-1 text-xs">
-            {/* Today's Fresh Egg Sale Amount */}
-            <div className="flex justify-between font-bold text-slate-800">
-              <span>TODAY EGG SALE:</span>
-              <span>
-                Rs. {Number(
+              <span className="pl-12">Sub Total:</span>
+              <span className="font-bold">
+                {Number(
                   activeReceipt.currentSaleAmount ||
                   (Number(activeReceipt.totalAmount) - (Number(activeReceipt.previousBalance) || 0))
                 ).toLocaleString()}
               </span>
             </div>
 
-            {/* Previous Udhaar Added to Bill */}
             {Number(activeReceipt.previousBalance) > 0 && (
-              <div className="flex justify-between font-bold text-red-700 bg-red-50/80 px-1 py-0.5 rounded">
-                <span>PREVIOUS UDHAAR:</span>
-                <span>+ Rs. {Number(activeReceipt.previousBalance).toLocaleString()}</span>
+              <div className="flex justify-between">
+                <span className="pl-12">Previous Udhaar:</span>
+                <span className="font-bold">
+                  +{Number(activeReceipt.previousBalance).toLocaleString()}
+                </span>
               </div>
             )}
+          </div>
 
-            {/* Kul Bill / Grand Total */}
-            <div className="flex justify-between font-black text-sm text-slate-950 pt-1 border-t border-slate-300">
-              <span>KUL BILL (TOTAL PAYABLE):</span>
+          {/* Double Line Divider */}
+          <div className="text-black select-none tracking-tighter font-bold my-1 text-[11px]">
+            ========================================
+          </div>
+
+          {/* Bill Total, Tendered (Cash Wasool), Balance */}
+          <div className="space-y-0.5 py-1 text-[11px]">
+            <div className="flex justify-between font-bold text-xs">
+              <span className="pl-12">Bill Total:</span>
               <span>
-                Rs. {Number(
+                {Number(
                   activeReceipt.grandTotal || activeReceipt.totalAmount
                 ).toLocaleString()}
               </span>
             </div>
 
-            <div className="flex justify-between font-bold text-emerald-800">
-              <span>CASH RECEIVED (WASOOL):</span>
-              <span>Rs. {Number(activeReceipt.paidAmount).toLocaleString()}</span>
+            <div className="flex justify-between font-bold">
+              <span className="pl-12">Cash Wasool:</span>
+              <span>{Number(activeReceipt.paidAmount).toLocaleString()}</span>
             </div>
 
-            <div className="flex justify-between font-black text-slate-950 pt-1 border-t border-dashed border-slate-400">
-              <span>NET REMAINING UDHAAR (BAQAYA):</span>
-              <span className={activeReceipt.remainingBalance > 0 ? "underline text-red-700 font-black" : "text-emerald-800"}>
-                Rs. {Number(activeReceipt.remainingBalance).toLocaleString()}
-              </span>
+            <div className="flex justify-between font-bold text-xs">
+              <span className="pl-12">Balance:</span>
+              <span>{Number(activeReceipt.remainingBalance).toLocaleString()}</span>
             </div>
+          </div>
 
-            {activeReceipt.previousOrdersUdhaar && activeReceipt.previousOrdersUdhaar.length > 0 && (
-              <div className="pt-1.5 text-[9px] text-slate-500 border-t border-slate-200">
-                <span className="font-bold uppercase block text-slate-600">Pending Invoices Included:</span>
+          {/* Double Line Divider */}
+          <div className="text-black select-none tracking-tighter font-bold my-1 text-[11px]">
+            ========================================
+          </div>
+
+          {/* Included Udhaar Invoices (if any) */}
+          {activeReceipt.previousOrdersUdhaar && activeReceipt.previousOrdersUdhaar.length > 0 && (
+            <>
+              <div className="py-1 text-[9px] space-y-0.5">
+                <span className="font-bold">Pending Invoices Included:</span>
                 {activeReceipt.previousOrdersUdhaar.map((p, idx) => (
                   <div key={idx} className="flex justify-between">
-                    <span>• #{p.invoiceNo} ({p.date}):</span>
+                    <span>#{p.invoiceNo} ({p.date}):</span>
                     <span>Rs. {Number(p.remainingBalance).toLocaleString()}</span>
                   </div>
                 ))}
               </div>
-            )}
+              <div className="text-black select-none tracking-tighter my-0.5 text-[11px]">
+                ----------------------------------------
+              </div>
+            </>
+          )}
+
+          {/* Centered Thank You */}
+          <div className="text-center py-1.5 space-y-0.5 text-[10px]">
+            <p className="font-bold tracking-widest">THANK YOU</p>
+            <p className="text-[9px]">Tijarat Me Barkat Ki Dua</p>
           </div>
 
-          <div className="text-center text-slate-500 my-1 select-none">
-            ================================
+          {/* Double Line Divider */}
+          <div className="text-black select-none tracking-tighter font-bold my-1 text-[11px]">
+            ========================================
           </div>
-
-          {/* Payment Status & Footer */}
-          <div className="text-center space-y-1 pt-1 text-[10px]">
-            <p className="font-bold tracking-wider uppercase">
-              STATUS: {activeReceipt.paymentStatus} ({activeReceipt.paymentMode})
-            </p>
-            <p className="text-slate-600 pt-1">*** THANK YOU FOR YOUR BUSINESS ***</p>
-            <p className="text-slate-500 italic">Tijarat Me Barkat Ki Dua</p>
-            <div className="pt-2 text-[8px] text-slate-400">
-              SYSTEM BY ANDAGODAM POS • {activeReceipt.id}
-            </div>
-          </div>
-
-          {/* Sawtooth / Zig-Zag Paper Bottom Edge */}
-          <div className="absolute -bottom-2 left-0 right-0 h-2 bg-[#FCFCFA] [clip-path:polygon(0%_0%,5%_100%,10%_0%,15%_100%,20%_0%,25%_100%,30%_0%,35%_100%,40%_0%,45%_100%,50%_0%,55%_100%,60%_0%,65%_100%,70%_0%,75%_100%,80%_0%,85%_100%,90%_0%,95%_100%,100%_0%)]" />
         </div>
 
         {/* Modal Action Buttons */}
