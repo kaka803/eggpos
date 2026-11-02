@@ -62,6 +62,7 @@ export async function GET(req, { params }) {
       netEggs,
       totalEggs: netEggs,
       ratePerPeti: order.ratePerPeti,
+      govtRatePerPeti: order.govtRatePerPeti || order.ratePerPeti || 0,
       ratePerEgg: order.ratePerEgg || (order.ratePerPeti ? (order.ratePerPeti / EGGS_PER_PETI).toFixed(2) : "0"),
       brokenDeduction: order.brokenDeduction || 0,
       totalAmount: order.totalAmount,

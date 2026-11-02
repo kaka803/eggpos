@@ -51,6 +51,7 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
     petis: "1",       // stored as string so backspace/clear works
     trays: "",        // 1 Tray = 30 eggs
     brokenEggs: "",   // empty string = 0 for math
+    govtRatePerPeti: "7600",
     ratePerPeti: "7300",
     paymentMode: "Cash",
     paidAmount: "7300",
@@ -294,6 +295,7 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
   const netEggs = Math.max(0, grossEggs - brokenCount);
 
   const petiRate = Number(form.ratePerPeti) || 0;
+  const govtRate = Number(form.govtRatePerPeti) || 0;
   const singleEggRate = petiRate > 0 ? petiRate / EGGS_PER_PETI : 0;
   const trayRate = singleEggRate * EGGS_PER_TRAY; // Rate per tray = ratePerPeti / 12
   const traysAmount = Math.round(traysCount * trayRate);
@@ -414,6 +416,7 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
         netEggs: netEggs,
         totalEggs: netEggs, // Billable net eggs
         ratePerPeti: petiRate,
+        govtRatePerPeti: govtRate || petiRate,
         ratePerEgg: singleEggRate.toFixed(2),
         brokenDeduction: brokenDeduction,
         totalAmount: grandTotal,
@@ -451,9 +454,10 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
         petis: "1",
         trays: "",
         brokenEggs: "",
-        ratePerPeti: "7300",
+        govtRatePerPeti: form.govtRatePerPeti || "7600",
+        ratePerPeti: form.ratePerPeti || "7300",
         paymentMode: "Cash",
-        paidAmount: "7300",
+        paidAmount: String(petiRate || 7300),
       });
       setPaymentPreset("full");
       setSelectedCustomer(null);
@@ -611,63 +615,60 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
           STEP 1: SHOP & CUSTOMER INFORMATION
           ========================================================================= */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
+        {/* Clean Header: Title + Add Customer */}
+        <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center">
+            <span className="w-6 h-6 rounded-full bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shrink-0">
               1
             </span>
             <h3 className="font-extrabold text-sm text-slate-900">
-              Shop & Customer Details
+              Customer Details
             </h3>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            {/* Quick Add Customer Button */}
-            <button
-              type="button"
-              onClick={() => {
-                setCustomerModalPrefill({
-                  shopName: form.shopName || "",
-                  shopkeeperName: form.shopkeeperName || "",
-                  phone: form.phone || "",
-                  area: form.area || activeSalesman?.route || "",
-                });
-                setIsAddCustomerModalOpen(true);
-              }}
-              className="px-2.5 py-1 text-xs font-black rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 flex items-center gap-1 shadow-xs transition-transform active:scale-95 cursor-pointer"
-              title="Naya Customer Add Karein"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>+ Customer</span>
-            </button>
+          <button
+            type="button"
+            onClick={() => {
+              setCustomerModalPrefill({
+                shopName: form.shopName || "",
+                shopkeeperName: form.shopkeeperName || "",
+                phone: form.phone || "",
+                area: form.area || activeSalesman?.route || "",
+              });
+              setIsAddCustomerModalOpen(true);
+            }}
+            className="px-2.5 py-1.5 text-xs font-bold rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 flex items-center gap-1.5 shadow-xs transition-transform active:scale-95 cursor-pointer shrink-0"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>+ Customer</span>
+          </button>
+        </div>
 
-            {/* Mode Switcher */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl">
-              <button
-                type="button"
-                onClick={() => setForm({ ...form, entryMode: "manual" })}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                  form.entryMode === "manual"
-                    ? "bg-amber-400 text-slate-950 shadow-xs"
-                    : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                Type Details
-              </button>
-              <button
-                type="button"
-                onClick={() => setForm({ ...form, entryMode: "photo" })}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg flex items-center gap-1 transition-all ${
-                  form.entryMode === "photo"
-                    ? "bg-teal-800 text-white shadow-xs"
-                    : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                <Camera className="w-3.5 h-3.5" />
-                <span>Camera Snap</span>
-              </button>
-            </div>
-          </div>
+        {/* Entry Mode Switcher Tab */}
+        <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl text-xs font-bold text-slate-600">
+          <button
+            type="button"
+            onClick={() => setForm({ ...form, entryMode: "manual" })}
+            className={`py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+              form.entryMode === "manual"
+                ? "bg-white text-slate-900 shadow-xs font-black"
+                : "text-slate-500 hover:text-slate-900"
+            }`}
+          >
+            Type Details
+          </button>
+          <button
+            type="button"
+            onClick={() => setForm({ ...form, entryMode: "photo" })}
+            className={`py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              form.entryMode === "photo"
+                ? "bg-white text-teal-800 shadow-xs font-black"
+                : "text-slate-500 hover:text-slate-900"
+            }`}
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span>Camera Snap</span>
+          </button>
         </div>
 
         {form.entryMode === "manual" ? (
@@ -698,12 +699,12 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
               {/* Shop Name Input with Autocomplete */}
               <div className="relative">
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Shop Name (Dukan ka Naam) *
+                  Shop Name *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Al-Madina Super Store (Type to search)"
+                  placeholder="e.g. Al-Madina Super Store"
                   value={form.shopName}
                   onFocus={() => {
                     setActiveSuggestionField("shopName");
@@ -722,11 +723,11 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
                 {renderSuggestionsDropdown("shopName")}
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Customer / Owner Name with Autocomplete */}
                 <div className="relative">
                   <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Customer / Owner Name
+                    Customer Name
                   </label>
                   <input
                     type="text"
@@ -750,11 +751,11 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
                 <div className="relative">
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-bold text-slate-700 block">
-                      WhatsApp / Phone *
+                      Phone / WhatsApp *
                     </label>
                     {pendingUdhaar.hasPending && (
-                      <span className="text-[10px] font-black text-red-600 bg-red-100 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                        ⚠️ Udhaar: Rs. {pendingUdhaar.total.toLocaleString()}
+                      <span className="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">
+                        Udhaar: Rs. {pendingUdhaar.total.toLocaleString()}
                       </span>
                     )}
                   </div>
@@ -786,14 +787,14 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
 
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Area / Shop Address
+                  Area / Address
                 </label>
                 <input
                   type="text"
                   placeholder="e.g. Shop # 12, Main Bazar"
                   value={form.area}
                   onChange={(e) => setForm({ ...form, area: e.target.value })}
-                  className="w-full text-xs bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-teal-700 focus:bg-white"
+                  className="w-full text-xs bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-700 focus:bg-white"
                 />
               </div>
             </div>
@@ -817,7 +818,7 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
                   <button
                     type="button"
                     onClick={() => setForm({ ...form, photoUrl: null })}
-                    className="text-xs text-red-600 font-bold hover:underline"
+                    className="text-xs text-red-600 font-bold hover:underline cursor-pointer"
                   >
                     Remove & Re-take Photo
                   </button>
@@ -836,7 +837,7 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
 
                   <label className="mt-3 px-4 py-2.5 rounded-xl bg-teal-800 text-white text-xs font-bold shadow-md hover:bg-teal-900 cursor-pointer inline-flex items-center gap-2 transition-all">
                     <Camera className="w-4 h-4" />
-                    <span>{isUploading ? "Uploading to Cloudinary..." : "Open Camera / Take Photo"}</span>
+                    <span>{isUploading ? "Uploading..." : "Open Camera / Take Photo"}</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -853,11 +854,11 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
             <div className="relative">
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-bold text-slate-700 block">
-                  Shopkeeper WhatsApp Number (for receipt) *
+                  Shopkeeper WhatsApp Number *
                 </label>
                 {pendingUdhaar.hasPending && (
-                  <span className="text-[10px] font-black text-red-600 bg-red-100 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                    ⚠️ Udhaar: Rs. {pendingUdhaar.total.toLocaleString()}
+                  <span className="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">
+                    Udhaar: Rs. {pendingUdhaar.total.toLocaleString()}
                   </span>
                 )}
               </div>
@@ -906,10 +907,10 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-slate-800">
-                      Previous Udhaar (Peechla Baqaya)
+                      Previous Udhaar (Baqaya)
                     </span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-950 border border-amber-300">
-                      {pendingUdhaar.orders.length} Unpaid {pendingUdhaar.orders.length > 1 ? "Invoices" : "Invoice"}
+                      {pendingUdhaar.orders.length} Unpaid {pendingUdhaar.orders.length > 1 ? "Bills" : "Bill"}
                     </span>
                   </div>
                   <p className="text-sm font-black text-red-600 mt-0.5">
@@ -923,7 +924,7 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
                 onClick={() => setShowUdhaarDetails((prev) => !prev)}
                 className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-[11px] font-bold flex items-center gap-1.5 shadow-xs transition-colors shrink-0 cursor-pointer"
               >
-                <span>{showUdhaarDetails ? "Hide Details" : "View Invoices"}</span>
+                <span>{showUdhaarDetails ? "Hide" : "View"}</span>
                 {showUdhaarDetails ? <ChevronUp className="w-3.5 h-3.5 text-slate-500" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />}
               </button>
             </div>
@@ -964,19 +965,19 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
       </div>
 
       {/* =========================================================================
-          STEP 2: EGG QUANTITY & BREAKAGE (TOOTE ANDAY)
+          STEP 2: EGG QUANTITY & PRICING
           ========================================================================= */}
       <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200/90 shadow-xs space-y-3.5">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between pb-2 border-b border-amber-200/60">
           <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-slate-900 text-amber-400 font-black text-xs flex items-center justify-center">
+            <span className="w-6 h-6 rounded-full bg-slate-900 text-amber-400 font-black text-xs flex items-center justify-center shrink-0">
               2
             </span>
             <h3 className="font-extrabold text-sm text-slate-900">
-              Quantity & Breakage
+              Quantity & Pricing
             </h3>
           </div>
-          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300">
+          <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-300">
             1 Peti = {EGGS_PER_PETI} Eggs
           </span>
         </div>
@@ -984,17 +985,17 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
         {/* Petis Touch Stepper */}
         <div>
           <div className="flex items-center justify-between mb-1.5 text-xs">
-            <span className="font-bold text-slate-800">Boxes (Petis) Quantity:</span>
-            <span className="font-extrabold text-amber-800">
-              {petisCount * EGGS_PER_PETI} Eggs Gross
+            <span className="font-bold text-slate-800">Peti Quantity</span>
+            <span className="font-extrabold text-amber-900">
+              {petisCount * EGGS_PER_PETI} Eggs
             </span>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => updatePetis(form.petis - 1)}
-              className="w-14 h-12 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 text-2xl font-black text-slate-700 flex items-center justify-center active:scale-95 transition-all shadow-xs"
+              onClick={() => updatePetis(Number(form.petis) - 1)}
+              className="w-13 h-12 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 text-2xl font-black text-slate-700 flex items-center justify-center active:scale-95 transition-all shadow-xs cursor-pointer shrink-0"
             >
               -
             </button>
@@ -1006,7 +1007,6 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
                 value={form.petis}
                 onChange={(e) => {
                   const raw = e.target.value;
-                  // Allow empty string while typing; recalc bill on valid number
                   setForm((prev) => ({
                     ...prev,
                     petis: raw,
@@ -1023,7 +1023,6 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
                   }));
                 }}
                 onBlur={(e) => {
-                  // On blur, ensure valid non-negative number
                   if (e.target.value === "" || Number(e.target.value) < 0) {
                     setForm((prev) => ({ ...prev, petis: "0" }));
                   }
@@ -1037,22 +1036,22 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
 
             <button
               type="button"
-              onClick={() => updatePetis(form.petis + 1)}
-              className="w-14 h-12 rounded-xl bg-amber-400 hover:bg-amber-500 text-2xl font-black text-slate-950 flex items-center justify-center active:scale-95 transition-all shadow-xs"
+              onClick={() => updatePetis(Number(form.petis) + 1)}
+              className="w-13 h-12 rounded-xl bg-amber-400 hover:bg-amber-500 text-2xl font-black text-slate-950 flex items-center justify-center active:scale-95 transition-all shadow-xs cursor-pointer shrink-0"
             >
               +
             </button>
           </div>
 
-          {/* Quick Peti Preset Chips */}
-          <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1">
+          {/* Quick Peti Preset Chips with hidden scrollbar */}
+          <div className="flex items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar pb-0.5">
             {[1, 2, 3, 5, 8, 10, 15].map((num) => (
               <button
                 key={num}
                 type="button"
                 onClick={() => updatePetis(num)}
-                className={`px-3 py-1 rounded-xl text-xs font-extrabold border transition-all shrink-0 ${
-                  form.petis === num
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border transition-all shrink-0 cursor-pointer ${
+                  String(form.petis) === String(num)
                     ? "bg-slate-900 text-amber-300 border-slate-900 shadow-xs"
                     : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
                 }`}
@@ -1063,50 +1062,54 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
           </div>
         </div>
 
-        {/* Trays & Rate per Peti */}
-        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-amber-200">
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-slate-700">
-                Trays (30 Eggs / Tray)
-              </label>
-              {traysCount > 0 && (
-                <span className="text-[10px] font-bold text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded">
-                  {traysCount * 30} Eggs
-                </span>
-              )}
+        {/* Trays Input */}
+        <div className="pt-2.5 border-t border-amber-200/70">
+          <div className="flex items-center justify-between mb-1.5 text-xs">
+            <span className="font-bold text-slate-800">
+              Extra Trays (Loose Eggs)
+            </span>
+            <span className="text-[11px] text-slate-500 font-semibold">
+              {traysCount > 0 ? `${traysCount * 30} Eggs (Rs. ${traysAmount.toLocaleString()})` : "1 Tray = 30 Eggs"}
+            </span>
+          </div>
+          <div className="flex gap-2 items-center">
+            <div className="relative w-28 shrink-0">
+              <input
+                type="number"
+                min="0"
+                placeholder="0"
+                value={form.trays}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const newTrays = Number(raw) || 0;
+                  const newTraysAmount = Math.round(newTrays * (petiRate / 12));
+                  const newGross = petisCount * petiRate + newTraysAmount;
+                  const newGrand = newGross + previousUdhaarTotal;
+                  setForm((prev) => ({
+                    ...prev,
+                    trays: raw,
+                    ...(raw !== "" && {
+                      paidAmount:
+                        paymentPreset === "full"
+                          ? String(newGrand)
+                          : paymentPreset === "current"
+                          ? String(newGross)
+                          : paymentPreset === "credit"
+                          ? "0"
+                          : prev.paidAmount,
+                    }),
+                  }));
+                }}
+                onBlur={(e) => { if (e.target.value === "") setForm((p) => ({ ...p, trays: "" })); }}
+                className="w-full text-center text-sm font-black text-slate-900 bg-white border border-slate-300 rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 pointer-events-none">
+                Trays
+              </span>
             </div>
-            <input
-              type="number"
-              min="0"
-              placeholder="0 Trays"
-              value={form.trays}
-              onChange={(e) => {
-                const raw = e.target.value;
-                const newTrays = Number(raw) || 0;
-                const newTraysAmount = Math.round(newTrays * (petiRate / 12));
-                const newGross = petisCount * petiRate + newTraysAmount;
-                const newGrand = newGross + previousUdhaarTotal;
-                setForm((prev) => ({
-                  ...prev,
-                  trays: raw,
-                  ...(raw !== "" && {
-                    paidAmount:
-                      paymentPreset === "full"
-                        ? String(newGrand)
-                        : paymentPreset === "current"
-                        ? String(newGross)
-                        : paymentPreset === "credit"
-                        ? "0"
-                        : prev.paidAmount,
-                  }),
-                }));
-              }}
-              onBlur={(e) => { if (e.target.value === "") setForm((p) => ({ ...p, trays: "" })); }}
-              className="w-full text-xs font-black text-slate-900 bg-white border border-slate-300 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
-            />
+
             {/* Quick Tray Presets */}
-            <div className="flex items-center gap-1 mt-1.5 overflow-x-auto pb-0.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5 flex-1">
               {[1, 2, 3, 4, 6].map((t) => (
                 <button
                   key={t}
@@ -1128,141 +1131,148 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
                           : prev.paidAmount,
                     }));
                   }}
-                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-colors shrink-0 ${
-                    form.trays === String(t)
+                  className={`px-2.5 py-2 rounded-xl text-xs font-bold border transition-colors shrink-0 cursor-pointer ${
+                    String(form.trays) === String(t)
                       ? "bg-slate-900 text-white border-slate-900"
-                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                      : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
                   }`}
                 >
-                  {t} Tray{t > 1 ? "s" : ""}
+                  {t} {t === 6 ? "Half Peti" : t > 1 ? "Trays" : "Tray"}
                 </button>
               ))}
             </div>
-            {petiRate > 0 && (
-              <span className="text-[10px] text-slate-500 block mt-1">
-                ≈ Rs. {Math.round(petiRate / 12)} / tray
+          </div>
+        </div>
+
+        {/* Pricing / Rates Section: Clean Govt Rate vs Given Rate */}
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black text-slate-900 uppercase tracking-wide">
+              Rate per Peti
+            </span>
+            {govtRate > 0 && petiRate > 0 && govtRate > petiRate && (
+              <span className="text-[11px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                Discount: Rs. {(govtRate - petiRate).toLocaleString()} / Peti
               </span>
             )}
           </div>
 
-          <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1">
-              Rate per Peti (Rs) *
-            </label>
-            <input
-              type="number"
-              required
-              min="0"
-              placeholder="0"
-              value={form.ratePerPeti}
-              onChange={(e) => {
-                const raw = e.target.value;
-                const newPetiRate = Number(raw) || 0;
-                const newTraysAmount = Math.round(traysCount * (newPetiRate / 12));
-                const newGross = petisCount * newPetiRate + newTraysAmount;
-                const newGrand = newGross + previousUdhaarTotal;
-                setForm((prev) => ({
-                  ...prev,
-                  ratePerPeti: raw,
-                  paidAmount:
-                    paymentPreset === "full"
-                      ? String(newGrand)
-                      : paymentPreset === "current"
-                      ? String(newGross)
-                      : paymentPreset === "credit"
-                      ? "0"
-                      : prev.paidAmount,
-                }));
-              }}
-              onBlur={(e) => { if (e.target.value === "") setForm((p) => ({ ...p, ratePerPeti: "0" })); }}
-              className="w-full text-xs font-extrabold text-slate-900 bg-white border border-slate-300 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
-            />
-            <span className="text-[10px] text-slate-500 block mt-0.5">
-              ≈ Rs. {(petiRate > 0 ? petiRate / EGGS_PER_PETI : 0).toFixed(2)} / egg
-            </span>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Government Rate */}
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-600 block">
+                Govt Rate (Rs)
+              </label>
+              <input
+                type="number"
+                min="0"
+                placeholder="7600"
+                value={form.govtRatePerPeti}
+                onChange={(e) => {
+                  setForm((prev) => ({ ...prev, govtRatePerPeti: e.target.value }));
+                }}
+                className="w-full text-xs font-bold text-slate-700 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white"
+              />
+              <span className="text-[10px] text-slate-400 font-medium block">
+                Rs. {(govtRate > 0 ? govtRate / EGGS_PER_PETI : 0).toFixed(2)} / egg
+              </span>
+            </div>
+
+            {/* Given Rate / Deal Rate (Hisab kitab isi par hoga) */}
+            <div className="space-y-1">
+              <label className="text-xs font-extrabold text-slate-950 block">
+                Given Rate (Rs) *
+              </label>
+              <input
+                type="number"
+                required
+                min="0"
+                placeholder="7300"
+                value={form.ratePerPeti}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const newPetiRate = Number(raw) || 0;
+                  const newTraysAmount = Math.round(traysCount * (newPetiRate / 12));
+                  const newGross = petisCount * newPetiRate + newTraysAmount;
+                  const newGrand = newGross + previousUdhaarTotal;
+                  setForm((prev) => ({
+                    ...prev,
+                    ratePerPeti: raw,
+                    paidAmount:
+                      paymentPreset === "full"
+                        ? String(newGrand)
+                        : paymentPreset === "current"
+                        ? String(newGross)
+                        : paymentPreset === "credit"
+                        ? "0"
+                        : prev.paidAmount,
+                  }));
+                }}
+                onBlur={(e) => { if (e.target.value === "") setForm((p) => ({ ...p, ratePerPeti: "0" })); }}
+                className="w-full text-xs font-black text-slate-950 bg-white border-2 border-emerald-500 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <span className="text-[10px] font-bold text-emerald-700 block">
+                Rs. {(petiRate > 0 ? petiRate / EGGS_PER_PETI : 0).toFixed(2)} / egg (Bill)
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* TOOTE HUE ANDAY (BROKEN EGGS WAREHOUSE RECORD) */}
-        <div className="bg-amber-50/90 p-3 rounded-xl border border-amber-300 space-y-1.5">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-black text-amber-950 flex items-center gap-1.5">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-              <span>Toote Hue Anday (Broken Eggs)</span>
+        {/* Broken Eggs: Clean & Compact Row */}
+        <div className="bg-white p-3 rounded-xl border border-slate-200/90 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <label className="text-xs font-bold text-slate-700 block">
+              Broken Eggs (Toote Anday)
             </label>
-            <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
-              Warehouse Record (No Bill Deduction)
+            <span className="text-[10px] text-slate-400 block">
+              Warehouse record only (no bill deduction)
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="w-24 shrink-0">
             <input
               type="number"
               min="0"
-              placeholder="0 (e.g. 5, 10 toote anday)"
+              placeholder="0"
               value={form.brokenEggs}
               onChange={(e) => setForm({ ...form, brokenEggs: e.target.value })}
               onBlur={(e) => { if (e.target.value === "") setForm((p) => ({ ...p, brokenEggs: "" })); }}
-              className="w-full text-xs font-black text-amber-900 bg-white border border-amber-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full text-center text-xs font-black bg-slate-50 border border-slate-300 rounded-xl py-2 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white"
             />
-            {brokenCount > 0 && (
-              <span className="text-xs font-black text-amber-900 whitespace-nowrap px-2.5 py-1 rounded-lg bg-amber-200/80 border border-amber-300 shrink-0">
-                📦 {brokenCount} Recorded
-              </span>
-            )}
           </div>
-          {brokenCount > 0 && (
-            <p className="text-[11px] text-amber-800 font-medium">
-              ✓ {brokenCount} toote anday warehouse record mai save honge (Customer bill mai kami nahi hogi).
-            </p>
-          )}
         </div>
 
-        {/* Live Calculation Preview Strip */}
-        {/* Live Calculation Preview Strip */}
-        <div className="bg-white p-3.5 rounded-xl border border-amber-300 text-xs space-y-1.5 shadow-xs">
-          <div className="flex justify-between text-slate-600">
-            <span>Gross Eggs:</span>
-            <strong className="text-slate-900">
+        {/* Live Calculation Summary Strip */}
+        <div className="bg-slate-900 text-white p-4 rounded-2xl space-y-2 shadow-md">
+          <div className="flex justify-between items-center text-xs text-slate-300">
+            <span>Total Eggs:</span>
+            <span className="font-bold text-white">
               {grossEggs.toLocaleString()} Eggs
-              {traysCount > 0 && ` (${petisCount} Petis + ${traysCount} Trays)`}
-            </strong>
-          </div>
-          {brokenCount > 0 && (
-            <div className="flex justify-between text-amber-800 font-bold">
-              <span>Broken Eggs (Warehouse Record):</span>
-              <span>{brokenCount} Eggs (No bill deduction)</span>
-            </div>
-          )}
-          <div className="flex justify-between text-teal-800 font-extrabold pt-1 border-t border-slate-100">
-            <span>Net Billable Eggs:</span>
-            <span>{netEggs.toLocaleString()} Eggs</span>
+              {traysCount > 0 ? ` (${petisCount}P + ${traysCount}T)` : ` (${petisCount} Peti)`}
+            </span>
           </div>
 
-          <div className="flex items-baseline justify-between pt-1 border-t border-amber-200">
-            <span className="font-bold text-slate-700">Today's Sale Bill:</span>
-            <strong className="text-sm font-black text-slate-900">
+          <div className="flex justify-between items-center text-xs text-slate-300">
+            <span>Today's Sale Bill:</span>
+            <span className="font-black text-white text-sm">
               Rs. {totalBill.toLocaleString()}
-            </strong>
+            </span>
           </div>
 
           {pendingUdhaar.hasPending && (
-            <div className="flex items-baseline justify-between text-red-700 font-extrabold pt-0.5">
-              <span className="flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-                Previous Pending Udhaar:
-              </span>
-              <span className="text-sm font-black">
+            <div className="flex justify-between items-center text-xs text-amber-300 pt-1.5 border-t border-slate-800">
+              <span className="font-bold">Previous Udhaar:</span>
+              <span className="font-black text-sm text-red-400">
                 + Rs. {pendingUdhaar.total.toLocaleString()}
               </span>
             </div>
           )}
 
-          <div className="flex items-baseline justify-between pt-1.5 border-t-2 border-slate-900">
-            <span className="font-black text-slate-950 text-sm">Kul Wasooli (Grand Total):</span>
-            <strong className="text-base font-black text-emerald-800">
+          <div className="flex justify-between items-center pt-2 border-t border-slate-800">
+            <span className="font-black text-amber-400 text-sm">Grand Total (Kul Wasooli):</span>
+            <span className="text-xl font-black text-amber-400">
               Rs. {grandTotal.toLocaleString()}
-            </strong>
+            </span>
           </div>
         </div>
       </div>
@@ -1271,13 +1281,13 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
           STEP 3: PAYMENT & KHATA (UDHAAR)
           ========================================================================= */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs space-y-3.5">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center">
+            <span className="w-6 h-6 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0">
               3
             </span>
             <h3 className="font-extrabold text-sm text-slate-900">
-              Payment & Udhaar (Khata)
+              Payment & Khata
             </h3>
           </div>
           {pendingUdhaar.hasPending && (
@@ -1294,12 +1304,14 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
             onClick={() => handlePresetSelect("full")}
             className={`py-2 px-2 rounded-xl text-xs font-black flex flex-col items-center gap-1 border transition-all cursor-pointer ${
               paymentPreset === "full"
-                ? "bg-teal-800 text-white border-teal-800 shadow-xs"
+                ? "bg-slate-900 text-amber-300 border-slate-900 shadow-xs"
                 : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
             }`}
           >
             <span>Full Wasooli</span>
-            <span className="text-[10px] font-bold text-teal-200">Rs. {grandTotal.toLocaleString()}</span>
+            <span className={`text-[10px] font-bold ${paymentPreset === "full" ? "text-amber-200" : "text-slate-500"}`}>
+              Rs. {grandTotal.toLocaleString()}
+            </span>
           </button>
 
           {pendingUdhaar.hasPending && (
@@ -1312,8 +1324,10 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
                   : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
               }`}
             >
-              <span>Today Bill Only</span>
-              <span className="text-[10px] font-bold text-blue-200">Rs. {totalBill.toLocaleString()}</span>
+              <span>Today Bill</span>
+              <span className={`text-[10px] font-bold ${paymentPreset === "current" ? "text-blue-200" : "text-slate-500"}`}>
+                Rs. {totalBill.toLocaleString()}
+              </span>
             </button>
           )}
 
@@ -1322,12 +1336,14 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
             onClick={() => handlePresetSelect("credit")}
             className={`py-2 px-2 rounded-xl text-xs font-black flex flex-col items-center gap-1 border transition-all cursor-pointer ${
               paymentPreset === "credit"
-                ? "bg-red-700 text-white border-red-700 shadow-xs"
+                ? "bg-red-600 text-white border-red-600 shadow-xs"
                 : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
             }`}
           >
             <span>Full Udhaar</span>
-            <span className="text-[10px] font-bold text-red-200">Rs. 0 Paid</span>
+            <span className={`text-[10px] font-bold ${paymentPreset === "credit" ? "text-red-200" : "text-slate-500"}`}>
+              Rs. 0 Paid
+            </span>
           </button>
 
           <button
@@ -1340,18 +1356,20 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
             }`}
           >
             <span>Partial Pay</span>
-            <span className="text-[10px] font-bold text-slate-600">Custom Amount</span>
+            <span className={`text-[10px] font-bold ${paymentPreset === "custom" ? "text-slate-900" : "text-slate-500"}`}>
+              Custom
+            </span>
           </button>
         </div>
 
-        {/* Custom Payment Amount Input (visible when Partial Pay is selected) */}
+        {/* Custom Payment Amount Input */}
         {paymentPreset === "custom" && (
           <div className="space-y-1.5 p-3 rounded-xl bg-amber-50 border border-amber-200">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-700 block">
-                Enter Cash Amount Received (Rs)
+                Cash Received (Rs)
               </label>
-              <span className="text-[10px] text-slate-500">Max: Rs. {grandTotal.toLocaleString()}</span>
+              <span className="text-[10px] text-slate-500 font-semibold">Max: Rs. {grandTotal.toLocaleString()}</span>
             </div>
             <input
               type="number"
@@ -1361,19 +1379,19 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
               value={form.paidAmount}
               onChange={(e) => setForm({ ...form, paidAmount: e.target.value })}
               onBlur={(e) => { if (e.target.value === "") setForm((p) => ({ ...p, paidAmount: "0" })); }}
-              className="w-full text-sm font-black text-slate-900 bg-white border border-amber-400 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full text-base font-black text-slate-900 bg-white border border-amber-400 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
         )}
 
-        {/* Live Balance / Udhaar Status Card */}
+        {/* Balance Status Card */}
         <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
           <div>
             <span className="text-[11px] text-slate-500 block font-semibold">
-              Remaining Udhaar (Baqaya):
+              Remaining Udhaar:
             </span>
             <strong
-              className={`text-base font-black ${
+              className={`text-lg font-black ${
                 remainingBalance > 0 ? "text-red-600" : "text-emerald-700"
               }`}
             >
@@ -1382,7 +1400,7 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
           </div>
 
           <span
-            className={`text-xs font-extrabold px-3 py-1 rounded-full ${
+            className={`text-xs font-extrabold px-3 py-1.5 rounded-xl ${
               remainingBalance <= 0
                 ? "bg-emerald-100 text-emerald-800"
                 : paid === 0
@@ -1390,7 +1408,7 @@ export default function NewSaleEntry({ activeSalesman, initialCustomer = null })
                 : "bg-amber-100 text-amber-900"
             }`}
           >
-            {remainingBalance <= 0 ? "✓ Full Paid" : paid === 0 ? "⚠️ Full Udhaar" : "Partial Paid"}
+            {remainingBalance <= 0 ? "✓ Full Paid" : paid === 0 ? "Full Udhaar" : "Partial Paid"}
           </span>
         </div>
       </div>

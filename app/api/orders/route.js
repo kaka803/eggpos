@@ -269,6 +269,7 @@ export async function GET(req) {
       netEggs: o.netEggs || (o.petis * EGGS_PER_PETI + (o.looseEggs || 0) - (o.brokenEggs || 0)),
       totalEggs: o.netEggs || (o.petis * EGGS_PER_PETI + (o.looseEggs || 0) - (o.brokenEggs || 0)),
       ratePerPeti: o.ratePerPeti,
+      govtRatePerPeti: o.govtRatePerPeti || o.ratePerPeti || 0,
       ratePerEgg: o.ratePerEgg || (o.ratePerPeti ? (o.ratePerPeti / EGGS_PER_PETI).toFixed(2) : "0"),
       brokenDeduction: o.brokenDeduction || 0,
       currentSaleAmount: o.currentSaleAmount || (o.totalAmount - (o.previousBalance || 0)),
@@ -320,6 +321,7 @@ export async function POST(req) {
     const trays = Number(data.trays) || (data.looseEggs ? Math.floor(Number(data.looseEggs) / EGGS_PER_TRAY) : 0);
     const looseEggs = Number(data.looseEggs) || trays * EGGS_PER_TRAY;
     const ratePerPeti = Number(data.ratePerPeti) || 0;
+    const govtRatePerPeti = Number(data.govtRatePerPeti) || ratePerPeti;
     const singleEggRate = ratePerPeti / EGGS_PER_PETI;
 
     const grossEggs = petis * EGGS_PER_PETI + looseEggs;
@@ -390,6 +392,7 @@ export async function POST(req) {
       brokenEggs,
       netEggs,
       ratePerPeti,
+      govtRatePerPeti,
       ratePerEgg: Number(singleEggRate.toFixed(2)),
       brokenDeduction,
       currentSaleAmount,
@@ -450,6 +453,7 @@ export async function POST(req) {
         netEggs: newOrder.netEggs,
         totalEggs: newOrder.netEggs,
         ratePerPeti: newOrder.ratePerPeti,
+        govtRatePerPeti: newOrder.govtRatePerPeti,
         ratePerEgg: newOrder.ratePerEgg,
         brokenDeduction: newOrder.brokenDeduction,
         totalAmount: newOrder.totalAmount,
@@ -540,6 +544,7 @@ export async function PUT(req) {
           brokenEggs,
           netEggs,
           ratePerPeti,
+          govtRatePerPeti: Number(data.govtRatePerPeti ?? existing.govtRatePerPeti ?? ratePerPeti) || ratePerPeti,
           ratePerEgg: Number(singleEggRate.toFixed(2)),
           brokenDeduction,
           totalAmount,
@@ -578,6 +583,7 @@ export async function PUT(req) {
         netEggs: updated.netEggs,
         totalEggs: updated.netEggs,
         ratePerPeti: updated.ratePerPeti,
+        govtRatePerPeti: updated.govtRatePerPeti || updated.ratePerPeti,
         ratePerEgg: updated.ratePerEgg,
         brokenDeduction: updated.brokenDeduction,
         totalAmount: updated.totalAmount,

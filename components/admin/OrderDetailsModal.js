@@ -250,14 +250,28 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onEditOrder 
 
           {/* Pricing & Balance Overview */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-2">
-            <div className="flex justify-between text-slate-600">
-              <span>Rate per Peti (360 eggs):</span>
-              <span className="font-bold text-slate-800">
-                Rs. {Number(current.ratePerPeti || 0).toLocaleString()}
+            {Number(current.govtRatePerPeti) > 0 && Number(current.govtRatePerPeti) !== Number(current.ratePerPeti) && (
+              <div className="flex justify-between text-slate-600 text-xs">
+                <span>Govt Official Rate:</span>
+                <span className="font-semibold text-slate-700">
+                  Rs. {Number(current.govtRatePerPeti).toLocaleString()} / Peti
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between text-slate-700">
+              <span className="font-bold">Given Rate (Sale Deal):</span>
+              <span className="font-extrabold text-slate-900">
+                Rs. {Number(current.ratePerPeti || 0).toLocaleString()} / Peti
               </span>
             </div>
+            {Number(current.govtRatePerPeti) > Number(current.ratePerPeti) && (
+              <div className="flex justify-between text-emerald-800 text-xs font-bold bg-emerald-50 px-2 py-1 rounded-lg">
+                <span>Shopkeeper Discount:</span>
+                <span>Rs. {(Number(current.govtRatePerPeti) - Number(current.ratePerPeti)).toLocaleString()} / Peti</span>
+              </div>
+            )}
             {current.ratePerEgg && (
-              <div className="flex justify-between text-slate-600">
+              <div className="flex justify-between text-slate-600 text-xs">
                 <span>Equivalent Rate per Egg:</span>
                 <span className="font-medium text-slate-800">Rs. {current.ratePerEgg} / egg</span>
               </div>

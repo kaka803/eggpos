@@ -74,6 +74,10 @@ const OrderSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    govtRatePerPeti: {
+      type: Number,
+      default: 0,
+    },
     ratePerEgg: {
       type: Number,
       required: true,

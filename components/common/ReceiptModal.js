@@ -182,11 +182,18 @@ export default function ReceiptModal() {
           {/* Items Rows */}
           <div className="space-y-1 py-1 text-[10px]">
             {/* Petis */}
-            <div className="flex justify-between font-bold">
-              <span className="flex-1 text-left truncate pr-1">PETIS ({activeReceipt.petis * EGGS_PER_PETI} EGGS)</span>
-              <span className="w-8 text-right">{activeReceipt.petis}</span>
-              <span className="w-16 text-right">{Number(activeReceipt.ratePerPeti).toLocaleString()}</span>
-              <span className="w-16 text-right font-bold">{(activeReceipt.petis * activeReceipt.ratePerPeti).toLocaleString()}</span>
+            <div>
+              <div className="flex justify-between font-bold">
+                <span className="flex-1 text-left truncate pr-1">PETIS ({activeReceipt.petis * EGGS_PER_PETI} EGGS)</span>
+                <span className="w-8 text-right">{activeReceipt.petis}</span>
+                <span className="w-16 text-right">{Number(activeReceipt.ratePerPeti).toLocaleString()}</span>
+                <span className="w-16 text-right font-bold">{(activeReceipt.petis * activeReceipt.ratePerPeti).toLocaleString()}</span>
+              </div>
+              {activeReceipt.govtRatePerPeti && Number(activeReceipt.govtRatePerPeti) > Number(activeReceipt.ratePerPeti) && (
+                <div className="text-[9px] text-neutral-600">
+                  [Govt: {Number(activeReceipt.govtRatePerPeti).toLocaleString()} | Disc: -{Number(activeReceipt.govtRatePerPeti) - Number(activeReceipt.ratePerPeti)}/peti]
+                </div>
+              )}
             </div>
 
             {/* Loose Eggs */}

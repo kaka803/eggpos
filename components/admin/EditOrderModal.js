@@ -47,6 +47,7 @@ export default function EditOrderModal({ order, isOpen, onClose, onOrderUpdated 
       petis: String(order.petis ?? 1),
       looseEggs: String(order.looseEggs ?? 0),
       brokenEggs: String(order.brokenEggs ?? 0),
+      govtRatePerPeti: String(order.govtRatePerPeti ?? order.ratePerPeti ?? 7600),
       ratePerPeti: String(order.ratePerPeti ?? 7300),
       previousBalance: String(order.previousBalance ?? 0),
       paidAmount: String(order.paidAmount ?? 0),
@@ -135,6 +136,7 @@ export default function EditOrderModal({ order, isOpen, onClose, onOrderUpdated 
         netEggs: netEggs,
         totalEggs: netEggs,
         ratePerPeti: petiRate,
+        govtRatePerPeti: Number(form.govtRatePerPeti) || petiRate,
         ratePerEgg: singleEggRate.toFixed(2),
         brokenDeduction: brokenDeduction,
         totalAmount: currentTotalAmount,
@@ -290,7 +292,7 @@ export default function EditOrderModal({ order, isOpen, onClose, onOrderUpdated 
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
               <div>
                 <label className="text-[11px] font-bold text-slate-700 block mb-1">
                   Petis (Boxes)
@@ -342,17 +344,33 @@ export default function EditOrderModal({ order, isOpen, onClose, onOrderUpdated 
 
               <div>
                 <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                  Rate / Peti (Rs)
+                  Govt Rate (Rs)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.govtRatePerPeti}
+                  onChange={(e) => setForm({ ...form, govtRatePerPeti: e.target.value })}
+                  className="w-full text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl px-2 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400 text-center"
+                />
+                <span className="text-[10px] text-slate-500 block text-center mt-0.5">
+                  Sarkari Rate
+                </span>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-black text-emerald-800 block mb-1">
+                  Given Rate (Rs) *
                 </label>
                 <input
                   type="number"
                   min="1"
                   value={form.ratePerPeti}
                   onChange={(e) => setForm({ ...form, ratePerPeti: e.target.value })}
-                  className="w-full text-xs font-black bg-white border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400 text-center"
+                  className="w-full text-xs font-black bg-white border-2 border-emerald-500 rounded-xl px-2 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-center"
                 />
-                <span className="text-[10px] text-slate-500 block text-center mt-0.5">
-                  ≈ Rs. {singleEggRate.toFixed(2)}/egg
+                <span className="text-[10px] text-emerald-700 font-bold block text-center mt-0.5">
+                  Bill Rate
                 </span>
               </div>
             </div>
